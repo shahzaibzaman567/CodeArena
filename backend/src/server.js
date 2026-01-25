@@ -6,11 +6,11 @@ dotenv.config();
 
 const app = express();
 const __dirname = path.resolve()
-
+//get health api
 app.get("/health", (req, res) => {
   res.status(200).json({ message: "api is up and running on 1234 " });
 });
-
+//get a api books api
 app.get("/books", (req, res) => {
   res.status(200).json({ message: "this is the book end point" });
 });
