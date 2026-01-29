@@ -1,8 +1,10 @@
 import dotenv from "dotenv";
-dotenv.config()
+dotenv.config();  // load .env file
 
 export let ENV = {
-    port :process.env.port,
-    DB_url : process.env.DB_url,
-    NODE_ENV : process.env.NODE_ENV 
-}
+    port: process.env.PORT ,
+    DB_URL: process.env.DB_URL,
+    NODE_ENV: process.env.NODE_ENV ,
+};
+
+console.log("PORT:", ENV.port);

@@ -17,12 +17,11 @@ app.get("/books", (req, res) => {
 
 //make our app ready for deployment
 if(ENV.NODE_ENV === "production"){
-    app.use(express.static(path.join(__dirname,"../frontend/dist")))
+    app.use(express.static(path.join(__dirname,"frontend","dist")))
     app.get("/{*any}",(req,res)=>{
-      res.sendFile(path.join(__dirname,"../frontend","dist","index.html"))
+      res.sendFile(path.join(__dirname,"frontend","dist","index.html"))
     })
 }
+console.log(ENV.NODE_ENV)
 
 app.listen(ENV.port, () => console.log(`server started on port ${ENV.port}`));
-// push your folder on github repo 
-//step of after 30m to 35
