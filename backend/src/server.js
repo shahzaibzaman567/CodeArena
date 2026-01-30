@@ -22,6 +22,5 @@ if(ENV.NODE_ENV === "production"){
       res.sendFile(path.join(__dirname,"frontend","dist","index.html"))
     })
 }
-console.log(ENV.NODE_ENV)
-
+console.log(path.join(__dirname,"frontend","dist"))
 app.listen(ENV.port, "0.0.0.0",() => console.log(`server started on port ${ENV.port}`));
