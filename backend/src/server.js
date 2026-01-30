@@ -24,4 +24,4 @@ if(ENV.NODE_ENV === "production"){
 }
 console.log(ENV.NODE_ENV)
 
-app.listen(ENV.port, () => console.log(`server started on port ${ENV.port}`));
+app.listen(ENV.port, "0.0.0.0",() => console.log(`server started on port ${ENV.port}`));
