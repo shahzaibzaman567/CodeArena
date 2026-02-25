@@ -8,6 +8,7 @@ try{
     console.log("✅Connected to mongoDB : " , connect.connection.host )
 }catch(err){
 console.log(" Erro " , err)
+//process to exit
 process.exit(1)// 0 means success and 1 means fail
 }
 
