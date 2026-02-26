@@ -9,7 +9,7 @@ try{
           throw new Error ("DB_URL is not define in environment variable")
     }
     const connect=await mongoose.connect(ENV.DB_URL)
-    console.log("✅Connected to mongoDB : " , connect.connection.host )
+    console.log("✅ Connected to mongoDB : " , connect.connection.host )
 }catch(err){
 console.log(" Erro " , err)
 //process to exit
