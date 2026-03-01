@@ -26,28 +26,25 @@ app.get("/books", (req, res) => {
   res.status(200).json({ message: "this is the book end point" });
 });
 
-//make our app ready for deployment
-if(ENV.NODE_ENV === "production"){
-    app.use(express.static(path.join(__dirname,"frontend","dist")))
-    app.get("/{*any}",(req,res)=>{
-      res.sendFile(path.join(__dirname,"frontend","dist","index.html"))
-    })
-}
-console.log(path.join(__dirname,"frontend","dist"))
-app.use((req,res,next)=>{
-})
-
-
-
 const serverStart = async () =>{
   
   try{
     app.listen(ENV.port,() => {  console.log(`server started on port ${ENV.port}`)});
-        connectDB()
+    connectDB()
   }catch(err){
-console.log(err)
+    console.log(err)
   }
-
+  
 }
 
 serverStart()
+//make our app ready for deployment
+// if(ENV.NODE_ENV === "production"){
+//     app.use(express.static(path.join(__dirname,"frontend","dist")))
+//     app.get("/{*any}",(req,res)=>{
+//       res.sendFile(path.join(__dirname,"frontend","dist","index.html"))
+//     })
+// }
+// console.log(path.join(__dirname,"frontend","dist"))
+// app.use((req,res,next)=>{
+// })
