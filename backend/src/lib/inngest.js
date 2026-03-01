@@ -1,5 +1,5 @@
 import { connectDB } from "./db";
-import inngest, { Inngest } from "inngest";
+import  { Inngest } from "inngest";
 import User from "../models/User";
 
 export const inngest = new Inngest({id:"code-arena"})
