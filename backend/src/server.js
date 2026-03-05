@@ -6,6 +6,7 @@ import { connectDB } from "./lib/db.js";
 import cors from "cors"
 import { serve } from "inngest/express";
 import { inngest, functions } from "./lib/inngest.js";
+import { Server } from "http";
 dotenv.config();
 
 const app = express();
@@ -54,3 +55,4 @@ ConnectDB()
 // console.log(path.join(__dirname,"frontend","dist"))
 // app.use((req,res,next)=>{
 // })
+export default app;
