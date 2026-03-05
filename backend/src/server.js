@@ -36,13 +36,13 @@ ConnectDB()
 // const serverStart = async () =>{
   
 //   try{
+  // app.listen(ENV.port,() => {  console.log(`server started on port ${ENV.port}`)});
   //   }catch(err){
     //     console.log(err)
     //   }
     
     // }
     
-        app.listen(ENV.port,() => {  console.log(`server started on port ${ENV.port}`)});
 // serverStart()
 //make our app ready for deployment
 // if(ENV.NODE_ENV === "production"){
