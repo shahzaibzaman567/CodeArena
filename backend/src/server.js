@@ -32,7 +32,7 @@ async function ConnectDB(){
  }catch(err){
 console.log(err)
  }
-}
+}     
 ConnectDB()
 // const serverStart = async () =>{
   
