@@ -34,25 +34,25 @@ console.log(err)
  }
 }     
 ConnectDB()
-// const serverStart = async () =>{
+const serverStart = async () =>{
   
-//   try{
-  // app.listen(ENV.port,() => {  console.log(`server started on port ${ENV.port}`)});
-  //   }catch(err){
-    //     console.log(err)
-    //   }
+  try{
+  app.listen(ENV.port,() => {  console.log(`server started on port ${ENV.port}`)});
+    }catch(err){
+        console.log(err)
+      }
     
-    // }
+    }
     
-// serverStart()
-//make our app ready for deployment
-// if(ENV.NODE_ENV === "production"){
-//     app.use(express.static(path.join(__dirname,"frontend","dist")))
-//     app.get("/{*any}",(req,res)=>{
-//       res.sendFile(path.join(__dirname,"frontend","dist","index.html"))
-//     })
-// }
-// console.log(path.join(__dirname,"frontend","dist"))
-// app.use((req,res,next)=>{
-// })
+serverStart()
+// make our app ready for deployment
+if(ENV.NODE_ENV === "production"){
+    app.use(express.static(path.join(__dirname,"frontend","dist")))
+    app.get("/{*any}",(req,res)=>{
+      res.sendFile(path.join(__dirname,"frontend","dist","index.html"))
+    })
+}
+console.log(path.join(__dirname,"frontend","dist"))
+app.use((req,res,next)=>{
+})
 export default app;
