@@ -5,7 +5,7 @@ import path from "path";
 import { connectDB } from "./lib/db.js";
 import cors from "cors"
 import { serve } from "inngest/express";
-import { functions, inngest } from "./lib/inngest.js"; // Yahan same name 'inngest'
+import { functions,inngest } from "./lib/inngest.js"; // Yahan same name 'inngest'
 dotenv.config();
 
 const app = express();
