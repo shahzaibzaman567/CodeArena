@@ -59,11 +59,6 @@ A real-time collaborative web application where users can **meet live, write cod
 
 ---
 
-```
-```
-
----
-
 ## 🚧 Current Status
 
 This project is under active development. Core ideas and architecture are defined, and features are being implemented step by step.
