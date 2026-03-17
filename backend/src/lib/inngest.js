@@ -2,14 +2,14 @@ import { connectDB } from "./db.js";
 import { Inngest } from "inngest";
 import User from "../models/User.js";
 
-export const inng = new Inngest({ id: "code-arena" });
+// Yahan ek hi naam rakho, jaise 'inngest'
+export const inngest = new Inngest({ id: "code-arena" });
 
-const syncUser = inng.createFunction(
+const syncUser = inngest.createFunction(
   { id: "sync-user" },
   { event: "clerk/user.created" },
   async ({ event }) => {
     await connectDB();
-
     const { id, email_addresses, first_name, last_name, image_url } = event.data;
 
     const newUser = {
@@ -23,15 +23,12 @@ const syncUser = inng.createFunction(
   }
 );
 
-// delete user
-const deleteUserFromDB = inng.createFunction(
+const deleteUserFromDB = inngest.createFunction(
   { id: "delete-user-from-db" },
   { event: "clerk/user.deleted" },
   async ({ event }) => {
     await connectDB();
-
     const { id } = event.data;
-
     await User.deleteOne({ clerkId: id });
   }
 );
