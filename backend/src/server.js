@@ -5,7 +5,8 @@ import path from "path";
 import { connectDB } from "./lib/db.js";
 import cors from "cors"
 import { serve } from "inngest/express";
-import { inngest, functions } from "./lib/inngest.js";
+import { functions } from "./lib/inngest.js";
+import { inng } from "./lib/inngest.js";
 import { Server } from "http";
 dotenv.config();
 
@@ -14,7 +15,7 @@ const __dirname = path.resolve()
 //middleware
 app.use(express.json())
 app.use(cors({origin:ENV.CLIENT_URL,credentials:true}))//credentials: true meaning =>serve allows a browser to on req
-app.use("/api/inngest",serve({client:inngest,functions}))
+app.use("/api/inngest",serve({client:inng,functions}))
 
 
 //get health api
