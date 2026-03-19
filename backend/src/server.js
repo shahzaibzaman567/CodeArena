@@ -33,8 +33,8 @@ app.get("/books", (req, res) => {
 connectDB();
 
 // Start server
-app.listen(ENV.port, () => {
-  console.log(`Server started on port ${ENV.port}`);
-});
+// app.listen(ENV.port, () => {
+//   console.log(`Server started on port ${ENV.port}`);
+// });
 
 export default app;
