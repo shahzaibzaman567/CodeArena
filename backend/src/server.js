@@ -4,50 +4,37 @@ import { ENV } from "./lib/env.js";
 import path from "path";
 import { connectDB } from "./lib/db.js";
 import cors from "cors"
-import server from "inngest/express";
-import { Inngest } from "inngest";
-import { Functions, inngest } from "./lib/inngest.js";
+import { serve } from "inngest/express";
+import { inngest } from "./lib/inngest.js"; // Yahan same name 'inngest'
+import { functions } from "./lib/inngest.js";
 dotenv.config();
 
 const app = express();
-const __dirname = path.resolve()
-//middleware
-app.use(express.json())
-app.use(cors({origin:ENV.CLIENT_URL,credentials:true}))//credentials: true meaning =>server allows a browser to on req
-app.use("/api/inngest",server({client:inngest,Functions}))
+const __dirname = path.resolve();
 
+// Middleware
+app.use(express.json());
+app.use(cors({ origin: ENV.CLIENT_URL, credentials: true }));
 
-//get health api
+// Inngest serve
+app.use("/api/inngest", serve({ client: inngest, functions }));
+
+// Health check
 app.get("/health", (req, res) => {
-  res.status(200).json({ message: "api is up and running on 1234 " });
+  res.status(200).json({ message: "API is up and running" });
 });
-//get a api books api
+
+// Books endpoint
 app.get("/books", (req, res) => {
-  res.status(200).json({ message: "this is the book end point" });
+  res.status(200).json({ message: "This is the books endpoint" });
 });
 
-//make our app ready for deployment
-if(ENV.NODE_ENV === "production"){
-    app.use(express.static(path.join(__dirname,"frontend","dist")))
-    app.get("/{*any}",(req,res)=>{
-      res.sendFile(path.join(__dirname,"frontend","dist","index.html"))
-    })
-}
-console.log(path.join(__dirname,"frontend","dist"))
-app.use((req,res,next)=>{
-})
+// Connect DB
+connectDB();
 
+// Start server
+// app.listen(ENV.port, () => {
+//   console.log(`Server started on port ${ENV.port}`);
+// });
 
-
-const serverStart = async () =>{
-  
-  try{
-    app.listen(ENV.port,() => {  console.log(`server started on port ${ENV.port}`)});
-        connectDB()
-  }catch(err){
-console.log(err)
-  }
-
-}
-
-serverStart()
+export default app;

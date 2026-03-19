@@ -3,7 +3,7 @@ import './App.css'
 import { SignedIn, SignedOut, SignInButton, UserButton ,SignOutButton } from '@clerk/clerk-react'
 
 function App() {
-  //count variable
+
 
   return (
     <>
