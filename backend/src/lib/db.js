@@ -11,6 +11,7 @@ try{
     const connect=await mongoose.connect(ENV.DB_URL)
     console.log("✅ Connected to mongoDB : " , connect.connection.host )
 }catch(err){
+    //check error 
 console.log(" Erro " , err)
 //process to exit
 process.exit(1)// 0 means success and 1 means fail
