@@ -9,7 +9,9 @@ export const syncUser = inngest.createFunction(
   { event: "user.created" }, // Clerk ka asli event name
   async ({ event }) => {
     await connectDB();
-    const { id, email_addresses, first_name, last_name, image_url } = event.data;
+const data = event.data; // Clerk ka poora object
+const { id, email_addresses, first_name, last_name, image_url } = data
+console.log("Received Clerk Data:", JSON.stringify(event.data, null, 2));
 
     const userPayload = {
       clerkId: id,
