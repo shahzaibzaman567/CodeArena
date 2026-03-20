@@ -7,7 +7,7 @@ export const inngest = new Inngest({ id: "code-arena" });
 
 const syncUser = inngest.createFunction(
   { id: "sync-user" },
-  { event: "user.created" },
+  { event: "clerk/user.created" },
   async ({ event }) => {
     await connectDB();
     //data from event.data
@@ -26,7 +26,7 @@ const syncUser = inngest.createFunction(
 
 const deleteUserFromDB = inngest.createFunction(
   { id: "delete-user-from-db" },
-  { event: "user.deleted" },
+  { event: "clerk/user.deleted" },
   async ({ event }) => {
     await connectDB();
     const { id } = event.data;
