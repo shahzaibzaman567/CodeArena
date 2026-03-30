@@ -1,17 +1,14 @@
 import { Inngest } from "inngest";
-import { connectDB } from "./db.js";
-import User from "../models/User.js";
+// Note: Is file mein connectDB aur User model tabhi import karein jab zaroorat ho
+import User from "../models/User.js"; 
 
 export const inngest = new Inngest({ id: "code-arena" });
 
 export const syncUser = inngest.createFunction(
   { id: "sync-user" },
-  { event: "user.created" }, // Clerk ka asli event name
-  async ({ event }) => {
-    await connectDB();
-const data = event.data; // Clerk ka poora object
-const { id, email_addresses, first_name, last_name, image_url } = data
-console.log("Received Clerk Data:", JSON.stringify(event.data, null, 2));
+  { event: "clerk/user.created" }, // Clerk event structure check karein
+  async ({ event, step }) => {
+    const { id, email_addresses, first_name, last_name, image_url } = event.data;
 
     const userPayload = {
       clerkId: id,
@@ -20,10 +17,11 @@ console.log("Received Clerk Data:", JSON.stringify(event.data, null, 2));
       profileImage: image_url,
     };
 
+    // Database operation
     await User.findOneAndUpdate({ clerkId: id }, userPayload, { upsert: true });
     return { message: "User synced" };
   }
 );
 
-// Exports hamesha small 'f' ke saath rakhein
+// Hamesha 'functions' (small f) export karein
 export const functions = [syncUser]; 
