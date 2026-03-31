@@ -7,7 +7,7 @@ export const inngest = new Inngest({ id: "code-arena" });
 // 1. Function: User Create ya Update ke liye
 export const syncUser = inngest.createFunction(
   { id: "sync-user" },
-  { event: "clerk/user.created" }, // Clerk correct event name
+  { event: "user.created" }, // Clerk correct event name
   async ({ event }) => {
     await connectDB();
     const { id, email_addresses, first_name, last_name, image_url } = event.data;
@@ -27,7 +27,7 @@ export const syncUser = inngest.createFunction(
 // 2. Function: User Delete karne ke liye
 export const deleteUser = inngest.createFunction(
   { id: "delete-user" },
-  { event: "clerk/user.deleted" }, // Clerk jab user delete karega
+  { event: "user.deleted" }, // Clerk jab user delete karega
   async ({ event }) => {
     await connectDB();
     const { id } = event.data; // Clerk delete event mein sirf ID bhejta hai
