@@ -11,6 +11,25 @@ app.use(express.json());
 
 // Inngest route
 app.use("/api/inngest", serve({ client: inngest, functions }));
+app.post("/api/webhook/clerk", async (req, res) => {
+    try {
+        const payload = req.body;
+        const eventType = payload.type; // user.created ya user.deleted
+
+        console.log("Clerk Webhook Received:", eventType);
+
+        await inngest.send({
+            name: eventType, // user.created
+            data: payload.data
+        });
+
+        return res.status(200).json({ success: true });
+    } catch (err) {
+        console.error("Webhook Error:", err);
+        return res.status(500).json({ error: "Webhook failed" });
+    }
+});
+
 app.use("/health",(req,res)=>{
 res.json({message:"hay bro I am health"})
 })
