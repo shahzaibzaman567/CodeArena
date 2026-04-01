@@ -18,8 +18,8 @@ app.post("/api/webhook/clerk", async (req, res) => {
 
         console.log("Clerk Webhook Received:", eventType);
 
-        await inngest.send({
-            name: eventType, // user.created
+        await inngest.send({   
+            name: eventType, // user.created or user.deleted
             data: payload.data
         });
         
