@@ -2,7 +2,10 @@ import { Inngest } from "inngest";
 import User from "../models/User.js"; 
 import { connectDB } from "./db.js";
 
-export const inngest = new Inngest({ id: "code-arena" });
+export const inngest = new Inngest({ 
+  id: "code-arena",
+  signingKey: process.env.INNGEST_SIGNING_KEY 
+});
 
 // 1. Function: User Create ya Update ke liye
 export const syncUser = inngest.createFunction(

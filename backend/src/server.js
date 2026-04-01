@@ -22,7 +22,7 @@ app.post("/api/webhook/clerk", async (req, res) => {
             name: eventType, // user.created
             data: payload.data
         });
-
+        
         return res.status(200).json({ success: true });
     } catch (err) {
         console.error("Webhook Error:", err);
