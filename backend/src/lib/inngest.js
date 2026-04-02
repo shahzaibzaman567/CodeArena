@@ -1,10 +1,11 @@
 import { Inngest } from "inngest";
 import User from "../models/User.js"; 
 import { connectDB } from "./db.js";
+import { ENV } from "./env.js";
 
 export const inngest = new Inngest({ 
   id: "code-arena",
-  signingKey: process.env.INNGEST_SIGNING_KEY 
+  signingKey:ENV.INNGEST_SIGNING_KEY 
 });
 
 // 1. Function: User Create ya Update ke liye
@@ -26,7 +27,6 @@ export const syncUser = inngest.createFunction(
     return { message: "User created/synced" };
   }
 );
-
 // 2. Function: User Delete karne ke liye
 export const deleteUser = inngest.createFunction(
   { id: "delete-user" },

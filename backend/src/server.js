@@ -1,9 +1,9 @@
-import 'dotenv/config';
 import express from "express";
 import cors from "cors";
 import { serve } from "inngest/express";
 import { inngest, functions } from "./lib/inngest.js"; 
 import { connectDB } from "./lib/db.js";
+import { ENV } from './lib/env.js';
 
 const app = express();
 app.use(cors());
@@ -36,11 +36,11 @@ res.json({message:"hay bro I am health"})
 const startServer = async () => {
   try {
     await connectDB();
-    const PORT = process.env.PORT || 4000;
-    app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
+    app.listen(ENV.port, () => console.log(`🚀 Server on port ${ENV.port}`));
   } catch (error) {
     console.error("Failed to start server:", error);
   }
 };
 
 startServer();
+export default app;
