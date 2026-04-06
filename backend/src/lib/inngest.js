@@ -24,10 +24,10 @@ export const syncUser = inngest.createFunction(
       profileImage: image_url,
     };
 
-    await User.findOneAndUpdate({ clerkId: id }, userPayload, { upsert: true });
+    const newUser = await User.findOneAndUpdate({ clerkId: id }, userPayload, { upsert: true });
 
     await upsertStreamUser({
-      id: newUser.clerkId.toString,
+      id: newUser.clerkId.toString(),
       name: newUser.name,
       image: newUser.profileImage,
     })
@@ -47,7 +47,7 @@ export const deleteUser = inngest.createFunction(
 
     await User.findOneAndDelete({ clerkId: id });
 
-    await deleteStreamUser(id.toString)
+    await deleteStreamUser(id.toString())
 
     return { message: "User deleted from MongoDB" };
   }

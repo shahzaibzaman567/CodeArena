@@ -1,6 +1,5 @@
 import {StreamChat} from "stream-chat"
 import { ENV } from "./env.js"
-
 const apiKey=ENV.STREAM_API_KEY
 const apiSecret=ENV.STREAM_API_SECRET
 
@@ -23,7 +22,7 @@ console.log("Error upserting stream User: ",err)
 
 export const deleteStreamUser = async(userData)=>{
 try{
-await chatClient.upsertUser(userData)
+await chatClient.deleteUser(userData)
 console.log("stream User deleted successfully ")
 return userData;
 }catch(err){
