@@ -13,7 +13,7 @@ export const inngest = new Inngest({
 export const syncUser = inngest.createFunction(
   { id: "sync-user" },
   { event: "user.created" }, // Clerk correct event name
-  async ({ event }) => {
+  async ({ event , step}) => {
     await connectDB();
     const { id, email_addresses, first_name, last_name, image_url } = event.data;
 
@@ -24,13 +24,17 @@ export const syncUser = inngest.createFunction(
       profileImage: image_url,
     };
 
-    const newUser = await User.findOneAndUpdate(  { clerkId: id },  userPayload,  { upsert: true, new: true } );
+      const newUser = await step.run("update-db", async () => {
+      return await User.findOneAndUpdate({ clerkId: id }, userPayload, { upsert: true, new: true });
+    });
 
-    await upsertStreamUser({
-      id: newUser.clerkId.toString(),
-      name: newUser.name,
-      image: newUser.profileImage,
-    })
+     await step.run("sync-to-stream", async () => {
+      return await upsertStreamUser({
+        id: newUser.clerkId.toString(),
+        name: newUser.name,
+        image: newUser.profileImage,
+      });
+    });
 
 
 
