@@ -1,12 +1,11 @@
 import { Inngest } from "inngest";
-import User from "../models/User.js";
+import User from "../models/User.js"; 
 import { connectDB } from "./db.js";
 import { ENV } from "./env.js";
-import { upsertStreamUser, deleteStreamUser } from "./stream.js";
 
-export const inngest = new Inngest({
+export const inngest = new Inngest({ 
   id: "code-arena",
-  signingKey: ENV.INNGEST_SIGNING_KEY
+  signingKey:ENV.INNGEST_SIGNING_KEY 
 });
 
 // 1. Function: User Create ya Update ke liye
@@ -25,33 +24,21 @@ export const syncUser = inngest.createFunction(
     };
 
     await User.findOneAndUpdate({ clerkId: id }, userPayload, { upsert: true });
-
-    await upsertStreamUser({
-      id: newUser.clerkId.toString,
-      name: newUser.name,
-      image: newUser.profileImage,
-    })
-
-
-
     return { message: "User created/synced" };
   }
 );
 // 2. Function: User Delete karne ke liye
 export const deleteUser = inngest.createFunction(
   { id: "delete-user" },
-  { event: "user.deleted" }, // Clerk  user deleteted 
+  { event: "user.deleted" }, // Clerk jab user delete karega
   async ({ event }) => {
     await connectDB();
-    const { id } = event.data; // Clerk delete event 
+    const { id } = event.data; // Clerk delete event mein sirf ID bhejta hai
 
     await User.findOneAndDelete({ clerkId: id });
-
-    await deleteStreamUser(id.toString)
-
     return { message: "User deleted from MongoDB" };
   }
 );
 
-//  functions  export
+// Dono functions ko export karein small 'f' ke saath
 export const functions = [syncUser, deleteUser];
