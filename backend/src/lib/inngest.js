@@ -12,8 +12,8 @@ export const inngest = new Inngest({
 // 1. Function: User Create ya Update ke liye
 export const syncUser = inngest.createFunction(
   { id: "sync-user" },
-  { event: "user.created" }, // Clerk correct event name
-  async ({ event , step}) => {
+  { event: "user.created" },
+  async ({ event, step }) => {
     await connectDB();
     const { id, email_addresses, first_name, last_name, image_url } = event.data;
 
@@ -24,23 +24,23 @@ export const syncUser = inngest.createFunction(
       profileImage: image_url,
     };
 
-      const newUser = await step.run("update-db", async () => {
-      return await User.findOneAndUpdate({ clerkId: id }, userPayload, { upsert: true, new: true });
+    const newUser = await step.run("update-db", async () => {
+      return await User.findOneAndUpdate({ clerkId: id }, userPayload, { 
+        upsert: true, 
+        new: true 
+      });
     });
-
-     await step.run("sync-to-stream", async () => {
+      await step.run("sync-to-stream", async () => {
+      const streamUserId = sanitizeStreamUserId(newUser.clerkId);
       return await upsertStreamUser({
-        id: newUser.clerkId.toString(),
-        name: newUser.name,
+        id: streamUserId,
+        name: newUser.name || streamUserId, // Fallback name
         image: newUser.profileImage,
       });
     });
 
-
-
-    return { message: "User created/synced" };
-  }
-);
+    return { message: "User synced", clerkId: id, streamId: sanitizeStreamUserId(id) };
+})
 // 2. Function: User Delete karne ke liye
 export const deleteUser = inngest.createFunction(
   { id: "delete-user" },
