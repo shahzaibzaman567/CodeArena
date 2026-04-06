@@ -24,7 +24,7 @@ export const syncUser = inngest.createFunction(
       profileImage: image_url,
     };
 
-    const newUser = await User.findOneAndUpdate({ clerkId: id }, userPayload, { upsert: true });
+    const newUser = await User.findOneAndUpdate(  { clerkId: id },  userPayload,  { upsert: true, new: true } );
 
     await upsertStreamUser({
       id: newUser.clerkId.toString(),
