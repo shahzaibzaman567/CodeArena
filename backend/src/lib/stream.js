@@ -1,5 +1,5 @@
 import {StreamChat} from "stream-chat"
-import { ENV } from "./env.js"
+import { ENV } from "./env.js";
 const apiKey=ENV.STREAM_API_KEY
 const apiSecret=ENV.STREAM_API_SECRET
 
@@ -25,18 +25,15 @@ export const upsertStreamUser = async (userData) => {
   }
 };
 
-export const deleteStreamUser = async(userId) => {
+export const deleteStreamUser = async (userId) => {
   try {
-    // Stream's deleteUser expects a string ID, not an object
-    await deleteStreamUser(sanitizeStreamUserId(id));
+    await chatClient.deleteUser(userId.toString());
+
     console.log("✅ Stream User deleted:", userId);
+
     return { success: true };
   } catch (err) {
-    console.error("❌ Stream deleteUser failed:", {
-      error: err.message,
-      userId
-    });
-    throw err; // 🔥 Re-throw for Inngest retry
+    console.error("❌ Stream deleteUser failed:", err);
+    throw err;
   }
 };
-
