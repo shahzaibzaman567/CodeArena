@@ -10,25 +10,25 @@ export const chatClient = StreamChat.getInstance(apiKey, apiSecret, {
   disableCache: true, // ✅ Important for server-side usage
   timeout: 10000,
 });
-// ✅ Fixed version
-export const upsertStreamUser = async(userData) => {
+export const upsertStreamUser = async (userData) => {
   try {
+    console.log("📤 Sending to Stream:", userData);
+
     const result = await chatClient.upsertUser(userData);
-    console.log("✅ Stream User upserted:", userData.id);
+
+    console.log("✅ Stream response:", result);
+
     return result;
   } catch (err) {
-    console.error("❌ Stream upsertUser failed:", {
-      error: err.message,
-      userData: { id: userData.id } // Avoid logging sensitive data
-    });
-    throw err; // 🔥 Critical: Re-throw so Inngest retries
+    console.error("❌ Stream error full:", err);
+    throw err;
   }
 };
 
 export const deleteStreamUser = async(userId) => {
   try {
     // Stream's deleteUser expects a string ID, not an object
-    await chatClient.deleteUser(userId.toString());
+    await deleteStreamUser(sanitizeStreamUserId(id));
     console.log("✅ Stream User deleted:", userId);
     return { success: true };
   } catch (err) {
