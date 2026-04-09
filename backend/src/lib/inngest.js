@@ -14,6 +14,7 @@ export const syncUser = inngest.createFunction(
   { id: "sync-user" },
   { event: "user.created" },
   async ({ event, step }) => {
+    //connect mongoDB
     await connectDB();
     const { id, email_addresses, first_name, last_name, image_url } = event.data;
 
