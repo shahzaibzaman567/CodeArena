@@ -3,38 +3,27 @@ import { ENV } from "./env.js";
 
 const apiKey = ENV.STREAM_API_KEY;
 const apiSecret = ENV.STREAM_API_SECRET;
-
+console.log(apiKey,apiSecret)
 if (!apiKey || !apiSecret) {
   throw new Error("STREAM_API_KEY or STREAM_API_SECRET is missing in env variables");
 }
 
-/**
- * Initialize Stream Chat client for server-side usage
- * disableCache: true prevents memory leaks in serverless environments
- */
 export const chatClient = StreamChat.getInstance(apiKey, apiSecret, {
   disableCache: true,
   timeout: 10000,
 });
 
-/**
- * Sanitize user ID to comply with Stream Chat requirements
- * Stream only allows: a-z, 0-9, @, _, - [[4]]
- */
 export const sanitizeStreamUserId = (clerkId) => {
   if (!clerkId) return null;
   
-  // Convert to string and replace invalid characters with underscore
   return clerkId
     .toString()
-    .replace(/[^a-zA-Z0-9@_\-.]/g, '_')  // Replace invalid chars
-    .toLowerCase()                        // Stream IDs are case-sensitive but lowercase is safer
-    .slice(0, 64);                        // Stream has 64 char limit for IDs
+    .replace(/[^a-zA-Z0-9@_\-.]/g, '_')  
+    .toLowerCase()                        
+    .slice(0, 64);                        
 };
 
-/**
- * Upsert user to Stream Chat with proper error handling
- */
+
 export const upsertStreamUser = async (userData) => {
   try {
     console.log("📤 Stream upsertUser payload:", {
@@ -61,7 +50,7 @@ export const upsertStreamUser = async (userData) => {
 
     console.log("✅ Stream upsertUser success:", {
       userId: userData.id,
-      user: result.user?.id,
+      user: result.users?.id,
     });
 
     return result;
