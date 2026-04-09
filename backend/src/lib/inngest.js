@@ -1,18 +1,19 @@
 import { Inngest } from "inngest";
-import User from "../models/User.js"; 
+import User from "../models/User.js";
 import { connectDB } from "./db.js";
 import { ENV } from "./env.js";
+import { upsertStreamUser, deleteStreamUser } from "./stream.js";
 
-export const inngest = new Inngest({ 
+export const inngest = new Inngest({
   id: "code-arena",
-  signingKey:ENV.INNGEST_SIGNING_KEY 
+  signingKey: ENV.INNGEST_SIGNING_KEY
 });
 
 // 1. Function: User Create ya Update ke liye
 export const syncUser = inngest.createFunction(
   { id: "sync-user" },
-  { event: "user.created" }, // Clerk correct event name
-  async ({ event }) => {
+  { event: "user.created" },
+  async ({ event, step }) => {
     await connectDB();
     const { id, email_addresses, first_name, last_name, image_url } = event.data;
 
@@ -23,22 +24,38 @@ export const syncUser = inngest.createFunction(
       profileImage: image_url,
     };
 
-    await User.findOneAndUpdate({ clerkId: id }, userPayload, { upsert: true });
-    return { message: "User created/synced" };
-  }
-);
+    const newUser = await step.run("update-db", async () => {
+      return await User.findOneAndUpdate({ clerkId: id }, userPayload, { 
+        upsert: true, 
+        new: true 
+      });
+    });
+      await step.run("sync-to-stream", async () => {
+      const streamUserId = sanitizeStreamUserId(newUser.clerkId);
+      return await upsertStreamUser({
+        id: streamUserId,
+        name: newUser.name || streamUserId, // Fallback name
+        image: newUser.profileImage,
+      });
+    });
+
+    return { message: "User synced", clerkId: id, streamId: sanitizeStreamUserId(id) };
+})
 // 2. Function: User Delete karne ke liye
 export const deleteUser = inngest.createFunction(
   { id: "delete-user" },
-  { event: "user.deleted" }, // Clerk jab user delete karega
+  { event: "user.deleted" }, // Clerk  user deleteted 
   async ({ event }) => {
     await connectDB();
-    const { id } = event.data; // Clerk delete event mein sirf ID bhejta hai
+    const { id } = event.data; // Clerk delete event 
 
     await User.findOneAndDelete({ clerkId: id });
+
+    await deleteStreamUser(id.toString())
+
     return { message: "User deleted from MongoDB" };
   }
 );
 
-// Dono functions ko export karein small 'f' ke saath
+//  functions  export
 export const functions = [syncUser, deleteUser];
