@@ -10,9 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@clerk/clerk-react": "^5.61.4",
+    "@clerk/clerk-react": "^5.61.1",
     "codearena": "file:..",
-    "dotenv": "^17.3.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "vite": "^7.3.1",
