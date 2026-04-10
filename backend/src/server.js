@@ -24,8 +24,6 @@ app.get("/health", (req, res) => {
 app.use("/api/inngest", serve({ 
   client: inngest, 
   functions,
-  // Optional: Add signing key verification in production
-  // signingKey: ENV.INNGEST_SIGNING_KEY,
 }));
 
 // Clerk webhook endpoint

@@ -67,9 +67,6 @@ export const upsertStreamUser = async (userData) => {
   }
 };
 
-/**
- * Delete user from Stream Chat
- */
 export const deleteStreamUser = async (userId) => {
   try {
     const streamUserId = sanitizeStreamUserId(userId);
