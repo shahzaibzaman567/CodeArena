@@ -4,6 +4,9 @@ import { serve } from "inngest/express";
 import { inngest, functions } from "./lib/inngest.js";
 import { connectDB } from "./lib/db.js";
 import { ENV } from "./lib/env.js";
+import { clerkMiddleware } from '@clerk/express'
+import { protectRoute } from "./middleware/protectRoutes.js";
+import { chatRoutes} from "./routes/chatRoute.js"
 
 const app = express();
 
@@ -17,6 +20,28 @@ app.use(
     functions,
   })
 );
+
+app.use("/api/chat",chatRoutes)
+
+app.get("/health", (req, res) => {
+  res.json({
+    message: "🚀 Server is healthy",
+  });
+});
+
+// app.get("/book", (req, res) => {
+//   res.json({
+//     message: "This is the book endpoint",
+//   });
+// });
+
+// app.get("/video-calls",protectRoute,(req,res)=>{
+// res.json({message:"video call endpoint"})
+// })
+
+
+
+app.use(clerkMiddleware())//this add auth field to request object : req.auth()
 
 app.post("/api/webhook/clerk", async (req, res) => {
   try {
@@ -41,12 +66,6 @@ app.post("/api/webhook/clerk", async (req, res) => {
       error: "Webhook failed",
     });
   }
-});
-
-app.get("/health", (req, res) => {
-  res.json({
-    message: "🚀 Server is healthy",
-  });
 });
 
 const startServer = async () => {
