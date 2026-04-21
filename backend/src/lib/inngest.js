@@ -4,7 +4,7 @@ import { connectDB } from "./db.js";
 import { ENV } from "./env.js";
 import { upsertStreamUser, deleteStreamUser } from "./stream.js";
 
-export const inngest = new Inngest({
+export const inngest = new Inngest({     
   id: "code-arena",
   signingKey: ENV.INNGEST_SIGNING_KEY,
 });
@@ -59,6 +59,8 @@ export const syncUser = inngest.createFunction(
       message: "User synced successfully",
       clerkId: id,
     };
+
+    // challange:send a welcome email here later - once i complete
   }
 );
 
@@ -83,5 +85,9 @@ export const removeUser = inngest.createFunction(
     };
   }
 );
+
+
+
+
 
 export const functions = [syncUser, removeUser];

@@ -7,7 +7,7 @@ import { ENV } from "./lib/env.js";
 import { clerkMiddleware } from '@clerk/express'
 import { protectRoute } from "./middleware/protectRoutes.js";
 import { chatRoutes} from "./routes/chatRoute.js"
-
+import { sessionRoutes } from "./routes/sessionRoutes.js";
 const app = express();
 
 app.use(cors());
@@ -22,6 +22,7 @@ app.use(
 );
 
 app.use("/api/chat",chatRoutes)
+app.use("/api/sessions",sessionRoutes)
 
 app.get("/health", (req, res) => {
   res.json({
