@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import './App.css'
-import { SignedIn, SignedOut, SignInButton, UserButton ,SignOutButton } from '@clerk/clerk-react'
-
 import { useUser } from "@clerk/clerk-react";
 import { useEffect } from "react";
-
+import {Routes,Route, Navigate} from "react-router-dom"
+import HomePage from './pages/home.jsx';
+// import AboutPage from './pages/about.jsx';
+import ProbelmsPage from './probelmsPages/problemspage.jsx';
+import { Toaster } from "react-hot-toast";
 function App() {
 
   const { user } = useUser();
@@ -24,24 +25,22 @@ function App() {
     }
   }, [user]);
 
+  const {isSignedIn} = useUser();
+
 
   return (
     <>
-    <h1>Welcome to codeArena</h1>
-    <SignedOut>
-    <SignInButton mode='modal'>
-       <button className=''> 
-              Login
-        </button>
-    </SignInButton>
-    </SignedOut>
-    
-    <SignedIn>
-      <SignOutButton/>     
-    <UserButton/>
-    </SignedIn>
+    <Routes>
+    <Route path="/" element={<HomePage/>}></Route>
+    {/* <Route path="/about" element={<AboutPage/>}></Route> */}
+    <Route path="/problems" element={isSignedIn ? <ProbelmsPage/>:<Navigate to={"/"}/>}></Route>
+    </Routes>
+    <Toaster position='top-right' toastOptions={{duration:3000}}/>
     </>
   )
 }
 
 export default App
+
+// tw daisyui , react-router-dom , reafct-hot-toast
+//todo : react-query aka tanstack query ,axios
