@@ -1,4 +1,5 @@
 import { StreamChat } from "stream-chat";
+import { StreamClient } from "@stream-io/node-sdk";
 import { ENV } from "./env.js";
 
 const apiKey = ENV.STREAM_API_KEY;
@@ -8,7 +9,12 @@ if (!apiKey || !apiSecret) {
   throw new Error("STREAM_API_KEY or STREAM_API_SECRET is missing in env variables");
 }
 
-export const chatClient = StreamChat.getInstance(apiKey, apiSecret, {
+ // This is used for video calling
+export const streamClient = new StreamClient(apiKey, apiSecret, {
+  timeout: 10000, 
+});
+
+export const chatClient = StreamChat.getInstance(apiKey, apiSecret, { // This is for chat feature
   disableCache: true,
   timeout: 10000,
 });
