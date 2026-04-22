@@ -1,45 +1,28 @@
 import { useState } from 'react'
-import './App.css'
-import { SignedIn, SignedOut, SignInButton, UserButton ,SignOutButton } from '@clerk/clerk-react'
-
 import { useUser } from "@clerk/clerk-react";
 import { useEffect } from "react";
-
+import {Routes,Route, Navigate} from "react-router-dom"
+import HomePage from './pages/home.jsx';
+// import AboutPage from './pages/about.jsx';
+import ProbelmsPage from './probelmsPages/problemspage.jsx';
+import { Toaster } from "react-hot-toast";
+import DashboardPage from "./pages/dashboard.jsx"
 function App() {
 
-  const { user } = useUser();
-
-  useEffect(() => {
-    if (user) {
-      fetch("https://your-backend.vercel.app", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clerkId: user.id,
-          email: user.primaryEmailAddress?.emailAddress,
-          name: user.fullName,
-          profileImage: user.imageUrl,
-        }),
-      });
-    }
-  }, [user]);
+  const {isSignedIn,isLoaded} = useUser();
+  
+  if(!isLoaded) return null
 
 
   return (
     <>
-    <h1>Welcome to codeArena</h1>
-    <SignedOut>
-    <SignInButton mode='modal'>
-       <button className=''> 
-              Login
-        </button>
-    </SignInButton>
-    </SignedOut>
-    
-    <SignedIn>
-      <SignOutButton/>     
-    <UserButton/>
-    </SignedIn>
+    <Routes>
+    <Route path="/" element={!isSignedIn ? <HomePage/>:<Navigate to={"/dashboard"}/>}></Route>
+    <Route path="/dashboard" element={isSignedIn ? <DashboardPage/>:<Navigate to={"/"}/>}></Route>
+    {/* <Route path="/about" element={<AboutPage/>}></Route> */}
+    <Route path="/problems" element={isSignedIn ? <ProbelmsPage/>:<Navigate to={"/"}/>}></Route>
+    </Routes>
+    <Toaster position='top-right' toastOptions={{duration:3000}}/>
     </>
   )
 }
