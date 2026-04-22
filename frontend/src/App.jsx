@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import {Routes,Route, Navigate} from "react-router-dom"
 import HomePage from './pages/home.jsx';
 // import AboutPage from './pages/about.jsx';
-import ProbelmsPage from './probelmsPages/problemspage.jsx';
+import ProbelmsPage from './pages/problemspage.jsx';
 import { Toaster } from "react-hot-toast";
 import DashboardPage from "./pages/dashboard.jsx"
 function App() {
