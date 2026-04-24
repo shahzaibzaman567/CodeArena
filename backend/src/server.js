@@ -10,8 +10,14 @@ import { chatRoutes} from "./routes/chatRoute.js"
 import { sessionRoutes } from "./routes/sessionRoutes.js";
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: ENV.CLIENT_URL,
+    credentials: true,
+  })
+);
 app.use(express.json());
+app.use(clerkMiddleware())//this add auth field to request object : req.auth()
 
 app.use(
   "/api/inngest",
@@ -39,11 +45,6 @@ app.get("/health", (req, res) => {
 // app.get("/video-calls",protectRoute,(req,res)=>{
 // res.json({message:"video call endpoint"})
 // })
-
-
-
-app.use(clerkMiddleware())//this add auth field to request object : req.auth()
-
 app.post("/api/webhook/clerk", async (req, res) => {
   try {
     const payload = req.body;
