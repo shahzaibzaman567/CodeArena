@@ -1,8 +1,16 @@
-import axios from "axios"
+import axios from "axios";
 
-const axiosIntance = axios.create({
-    baseURL:import.meta.env.VITE_API_URL,
-    withCredentials:true  //by adding this field browser will send the cookies on every singal request
-})
+const configuredApiUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
+const isSameOriginApi =
+  typeof window !== "undefined" &&
+  configuredApiUrl &&
+  configuredApiUrl === window.location.origin;
 
-export default axiosIntance;
+const baseURL = isSameOriginApi || !configuredApiUrl ? "/api" : `${configuredApiUrl}/api`;
+
+const axiosInstance = axios.create({
+  baseURL,
+  withCredentials: true,
+});
+
+export default axiosInstance;

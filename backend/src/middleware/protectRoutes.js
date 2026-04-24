@@ -7,20 +7,21 @@ export const protectRoute = [
     requireAuth({signInUrl:"/sigin"}),
     async (req, res, next) => {
         try {
-            const clerkId = req.auth().userId;
+            const clerkId = req.auth.userId;
 
             if (!clerkId) return res.status(401).json({ message: "Unauthorized User" });
             // find user in db by clerkID
-            let user = User.findOne({ clerkId });
+            let user = await User.findOne({ clerkId });
 
-            if (!user) return res.status(404).json("User not found");
+            if (!user) return res.status(404).json({ message: "User not found" });
             //attach user to request
-            req.user = user
+            req.user = user;
 
-            next()
+            next();
         }
         catch (err) {
-            console.error("erro in protectRoute middleware ", err)
+            console.error("Error in protectRoute middleware:", err);
+            return res.status(500).json({ message: "Server error", error: err.message });
         }
     }
 ]

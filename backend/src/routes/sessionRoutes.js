@@ -8,7 +8,7 @@ const router = express.Router();
 router
 .post("/",protectRoute,createSession)
 .get("/active",protectRoute,getActiveSession)
-.get("/my-recent-",protectRoute,getMyRecentSession)
+.get("/my-recent",protectRoute,getMyRecentSession)
 .get("/:id",protectRoute,getSessionById)
 .post("/:id/join",protectRoute,joinSession)
 .post("/:id/end",protectRoute,endSession)

@@ -9,7 +9,7 @@ export let ENV = {
     INNGEST_SIGNING_KEY: process.env.INNGEST_SIGNING_KEY,
     STREAM_API_KEY: process.env.STREAM_API_KEY,
     STREAM_API_SECRET: process.env.STREAM_API_SECRET,
-    CLIENT_URL: process.env.CLIENT_URL,
+    CLIENT_URL: process.env.CLIENT_URL?.replace(/\/$/, ""),
 };
 
 // console.log("PORT:", ENV.DB_URL);
