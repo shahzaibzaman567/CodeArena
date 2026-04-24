@@ -2,6 +2,8 @@ import Session from "../models/Session.js";
 import { chatClient, streamClient } from "../lib/stream.js";
 import { clerkClient } from "@clerk/express";
 export async function createSession(req, res) {
+    let session;
+
     try {
         const { problem, difficulty } = req.body;
         const userId = req.user._id;
@@ -15,7 +17,7 @@ export async function createSession(req, res) {
         // generate a unique stream call id
         const callId = `session_${Date.now()}_${Math.random().toString(36).substring(7)}`;
         //create session in db
-        const session = await Session.create({
+        session = await Session.create({
             problem,
             difficulty,
             host: userId,
@@ -42,9 +44,19 @@ export async function createSession(req, res) {
         res.status(201).json({ session });
     } catch (err) {
         console.error("Error in create session controller:", err);
+
+        if (session?._id) {
+            try {
+                await Session.findByIdAndDelete(session._id);
+            } catch (cleanupErr) {
+                console.error("Failed to rollback session after create failure:", cleanupErr.message);
+            }
+        }
+
         const streamFailure =
             typeof err.message === "string" &&
             (err.message.includes("GetOrCreateCall failed") ||
+                err.message.includes("timeout") ||
                 err.message.includes("api_key not found") ||
                 err.message.includes("Stream error"));
 
