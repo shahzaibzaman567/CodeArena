@@ -1,20 +1,37 @@
-import mongoose from "mongoose"
-import {ENV} from "./env.js"
+import mongoose from "mongoose";
+import { ENV } from "./env.js";
 
-export const connectDB= async () => {
-try{
-    if(!ENV.DB_URL){
-        //Err if not found
-          throw new Error ("DB_URL is not define in environment variable")
-    }
-    const connect=await mongoose.connect(ENV.DB_URL, {
-  dbName: 'codearena', 
-});
-    console.log("✅ Connected to mongoDB : " , connect.connection.host )
-}catch(err){
+// Cache the connection across serverless invocations
+let cached = global._mongooseCache;
+if (!cached) {
+  cached = global._mongooseCache = { conn: null, promise: null };
+}
+
+export const connectDB = async () => {
+  // Already connected — reuse
+  if (cached.conn) return cached.conn;
+
+  if (!ENV.DB_URL) {
+    throw new Error("DB_URL is not defined in environment variables");
+  }
+
+  // Connection in progress — wait for it
+  if (!cached.promise) {
+    cached.promise = mongoose
+      .connect(ENV.DB_URL, { dbName: "codearena" })
+      .then((m) => {
+        console.log("✅ Connected to MongoDB:", m.connection.host);
+        return m;
+      });
+  }
+
+  try {
+    cached.conn = await cached.promise;
+  } catch (err) {
+    cached.promise = null; // allow retry on next invocation
     console.error("DB connection error:", err.message);
-    // Don't call process.exit in serverless — throw so caller can handle
     throw err;
-}
+  }
 
-}
+  return cached.conn;
+};
