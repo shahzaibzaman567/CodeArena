@@ -19,12 +19,15 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     const data = error?.response?.data;
-    // If Vercel (or any server) returns a JSON error object, normalise it
     if (data && typeof data === 'object' && !Array.isArray(data)) {
-      const msg = typeof data.message === 'string' ? data.message
-               : typeof data.error === 'string'   ? data.error
-               : JSON.stringify(data);
-      // Attach a plain string so getErrorMessage always gets a string
+      // Handle nested Vercel error shape: { error: { code, message } }
+      const nested = data.error;
+      const msg =
+        typeof data.message === 'string'        ? data.message
+        : typeof nested?.message === 'string'   ? nested.message
+        : typeof nested === 'string'             ? nested
+        : typeof data.error === 'string'         ? data.error
+        : 'Something went wrong';
       error.response.data = { message: msg };
     }
     return Promise.reject(error);
