@@ -7,8 +7,8 @@ import {
   Panel,
   Separator as PanelResizeHandle,
 } from "react-resizable-panels";
-import ProblemDescription from "../components/ProblemDescription.jsx";
-import OutputPanel from "../components/OutputPanel.jsx";
+import ProblemDescription from "../components/problemDescription.jsx";
+import OutputPanel from "../components/outputPanel.jsx";
 import CodeEditorPanel from "../components/codeEditor.jsx";
 import { executeCode } from "../lib/codeExecution.js";
 import { useProblemById, useProblems } from "../hooks/useProblems";
