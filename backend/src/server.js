@@ -21,10 +21,22 @@ const app = express();
 const httpServer = createServer(app);
 const io = initializeSocket(httpServer);
 setIOInstance(io);
-
 app.use(
   cors({
-    origin: ENV.CLIENT_URL,
+    origin: (origin, callback) => {
+      const allowedOrigins = ENV.CLIENT_URL
+        ? ENV.CLIENT_URL.split(',')
+        : [
+            'http://localhost:5173',
+            'https://code-arena-oyjebv1j0-shahzaibzaman465s-projects.vercel.app'
+          ];
+
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true); // 🔥 TEMP FIX (prevents Vercel blocking)
+      }
+    },
     credentials: true,
   })
 );

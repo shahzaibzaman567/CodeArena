@@ -179,9 +179,6 @@ function SessionPage() {
     }
   }, []);
 
-  // ==========================================
-  // 🛡️ SENIOR DEV FIX: Handle code changes with functional updates
-  // ==========================================
   const handleCodeChange = useCallback((value) => {
     const newMap = {
       ...codeByLanguage,
@@ -196,9 +193,6 @@ function SessionPage() {
     broadcastCode(selectedLanguage, value);
   }, [selectedLanguage, codeByLanguage, debouncedSync, broadcastCode]);
 
-  // ==========================================
-  // 🛡️ SENIOR DEV FIX: Debounce AI widget sync
-  // ==========================================
   const debouncedSyncAI = useCallback(
     debounce((newCode, lang, problem) => {
       syncCodeWithAI(newCode, lang, problem);
@@ -210,9 +204,6 @@ function SessionPage() {
     debouncedSyncAI(code, selectedLanguage, session?.problem || "");
   }, [code, selectedLanguage, session, debouncedSyncAI]);
 
-  // ==========================================
-  // 🛡️ SENIOR DEV: Cleanup debounced functions on unmount
-  // ==========================================
   useEffect(() => {
     return () => {
       if (debouncedSyncRef.current) {
@@ -221,53 +212,53 @@ function SessionPage() {
     };
   }, []);
 
-  // ==========================================
-  // 🚀 Real-time Code Sync via Stream Events
-  // ==========================================
   useEffect(() => {
     if (!channel) return;
 
     const handleStreamEvent = (event) => {
-      if (event.type === "code_update" && event.user.id !== user?.id) {
-        if (!isSyncing) return;
-        const { language, code: newCode } = event;
-        if (language && newCode !== undefined) {
-          setCodeByLanguage(prev => ({ ...prev, [language]: newCode }));
+      try {
+        if (event.type === "code_update" && event.user.id !== user?.id) {
+          if (!isSyncing) return;
+          const { language, code: newCode } = event;
+          if (language && newCode !== undefined) {
+            setCodeByLanguage(prev => ({ ...prev, [language]: newCode }));
+          }
         }
-      }
 
-      // 🚀 Handle language change from partner
-      if (event.type === "language_change" && event.user.id !== user?.id) {
-        const { language: newLang } = event;
-        if (newLang) {
-          setSelectedLanguage(newLang);
-          setOutput(null);
+        if (event.type === "language_change" && event.user.id !== user?.id) {
+          const { language: newLang } = event;
+          if (newLang) {
+            setSelectedLanguage(newLang);
+            setOutput(null);
+          }
         }
-      }
 
-      if (event.type === "control_handoff") {
-        if (event.fromUserId === user?.id) {
-          return;
+        if (event.type === "control_handoff") {
+          if (event.fromUserId === user?.id) {
+            return;
+          }
+          
+          const isForMe = event.toUserId === user?.id;
+          
+          if (isForMe) {
+            setControlHandedTo(null);
+            toast.success(`${event.fromUserName} handed control to you!`);
+          } else {
+            setControlHandedTo(event.toUserId);
+            toast(`${event.fromUserName} handed control to ${event.toUserName || 'partner'}.`, { icon: '🕹️' });
+          }
         }
-        
-        const isForMe = event.toUserId === user?.id;
-        
-        if (isForMe) {
-          setControlHandedTo(null);
-          toast.success(`${event.fromUserName} handed control to you!`);
-        } else {
-          setControlHandedTo(event.toUserId);
-          toast(`${event.fromUserName} handed control to ${event.toUserName || 'partner'}.`, { icon: '🕹️' });
+
+        if (event.type === "code_run") {
+          setIsRunning(true);
         }
-      }
 
-      if (event.type === "code_run") {
-        setIsRunning(true);
-      }
-
-      if (event.type === "run_results") {
-        setIsRunning(false);
-        setOutput(event.results);
+        if (event.type === "run_results") {
+          setIsRunning(false);
+          setOutput(event.results);
+        }
+      } catch (error) {
+        console.error('Error handling stream event:', error);
       }
     };
 
@@ -277,81 +268,100 @@ function SessionPage() {
     channel.on("run_results", handleStreamEvent);
 
     return () => {
-      channel.off("code_update", handleStreamEvent);
-      channel.off("control_handoff", handleStreamEvent);
-      channel.off("code_run", handleStreamEvent);
-      channel.off("run_results", handleStreamEvent);
+      try {
+        channel.off("code_update", handleStreamEvent);
+        channel.off("control_handoff", handleStreamEvent);
+        channel.off("code_run", handleStreamEvent);
+        channel.off("run_results", handleStreamEvent);
+      } catch (error) {
+        console.error('Error removing stream event listeners:', error);
+      }
     };
   }, [channel, user?.id, isSyncing]);
 
-  // ==========================================
-  // 🛡️ Socket.io listeners for control transfer
-  // ==========================================
   useEffect(() => {
     if (!isSocketConnected || !onSocket) return;
 
-    // Listen for control updates
     const handleControlUpdate = (data) => {
-      const { currentControlUserId, previousControlUserId, fromUserName, toUserName } = data;
-      
-      console.log(`🎮 Control updated:`, data);
-      
-      setControlHandedTo(currentControlUserId);
-      
-      if (currentControlUserId === user?.id) {
-        toast.success(`${fromUserName} handed control to you!`);
-      } else if (currentControlUserId) {
-        toast(`${fromUserName} handed control to ${toUserName}.`, { icon: '🕹️' });
+      try {
+        const { currentControlUserId, previousControlUserId, fromUserName, toUserName } = data;
+        
+        console.log(`🎮 Control updated:`, data);
+        
+        setControlHandedTo(currentControlUserId);
+        
+        if (currentControlUserId === user?.id) {
+          toast.success(`${fromUserName} handed control to you!`);
+        } else if (currentControlUserId) {
+          toast(`${fromUserName} handed control to ${toUserName}.`, { icon: '🕹️' });
+        }
+      } catch (error) {
+        console.error('Error handling control update:', error);
       }
     };
 
-    // Listen for control release
     const handleControlRelease = (data) => {
-      const { releasedByUserName } = data;
-      
-      console.log(`🎮 Control released by:`, data);
-      
-      setControlHandedTo(null);
-      toast(`${releasedByUserName} took back control.`, { icon: '🕹️' });
+      try {
+        const { releasedByUserName } = data;
+        
+        console.log(`🎮 Control released by:`, data);
+        
+        setControlHandedTo(null);
+        toast(`${releasedByUserName} took back control.`, { icon: '🕹️' });
+      } catch (error) {
+        console.error('Error handling control release:', error);
+      }
     };
 
     onSocket('control:updated', handleControlUpdate);
     onSocket('control:released', handleControlRelease);
 
     return () => {
-      offSocket('control:updated', handleControlUpdate);
-      offSocket('control:released', handleControlRelease);
+      try {
+        offSocket('control:updated', handleControlUpdate);
+        offSocket('control:released', handleControlRelease);
+      } catch (error) {
+        console.error('Error removing socket listeners:', error);
+      }
     };
   }, [isSocketConnected, onSocket, offSocket, user?.id]);
 
-  // ==========================================
-  // Event listeners for AI widget
-  // ==========================================
   useEffect(() => {
     const handleMarkersUpdate = (e) => {
-      if (e.detail && Array.isArray(e.detail.markers)) {
-        setEditorMarkers(e.detail.markers);
+      try {
+        if (e.detail && Array.isArray(e.detail.markers)) {
+          setEditorMarkers(e.detail.markers);
+        }
+      } catch (error) {
+        console.error('Error handling markers update:', error);
       }
     };
-    window.addEventListener("arena-markers-update", handleMarkersUpdate);
-    
+
     const handleApplyCode = (e) => {
-      if (e.detail && e.detail.code) {
-        handleCodeChange(e.detail.code, true);
-        toast.success("Code applied to editor!");
+      try {
+        if (e.detail && e.detail.code) {
+          handleCodeChange(e.detail.code, true);
+          toast.success("Code applied to editor!");
+        }
+      } catch (error) {
+        console.error('Error applying code:', error);
+        toast.error("Failed to apply code to editor");
       }
     };
+
+    window.addEventListener("arena-markers-update", handleMarkersUpdate);
     window.addEventListener("arena-apply-code", handleApplyCode);
 
     return () => {
-      window.removeEventListener("arena-markers-update", handleMarkersUpdate);
-      window.removeEventListener("arena-apply-code", handleApplyCode);
+      try {
+        window.removeEventListener("arena-markers-update", handleMarkersUpdate);
+        window.removeEventListener("arena-apply-code", handleApplyCode);
+      } catch (error) {
+        console.error('Error removing event listeners:', error);
+      }
     };
   }, [handleCodeChange]);
 
-  // ==========================================
-  // Action handlers
-  // ==========================================
   const handleToggleChallengeMode = () => {
     if (!isHost) return;
     updateSessionMutation.mutate({
@@ -368,7 +378,6 @@ function SessionPage() {
     const starterForTarget = problemData?.starterCode?.[newLang] || "";
     const starterForSource = problemData?.starterCode?.[oldLang] || "";
 
-    // 🚀 Broadcast language change to partner
     if (channel && chatClient?.userID) {
       channel.sendEvent({
         type: "language_change",
@@ -446,10 +455,17 @@ function SessionPage() {
         }
     } catch (err) {
         console.error("Execution failed:", err);
+        const errorResult = { 
+            success: false, 
+            error: err.message || "Execution failed",
+            output: ""
+        };
+        setOutput(errorResult);
+        
         if (channel && chatClient?.userID) {
             channel.sendEvent({ 
                 type: "run_results",
-                results: { stderr: "Execution failed." } 
+                results: errorResult 
             }).catch(() => {});
         }
     } finally {
@@ -459,7 +475,13 @@ function SessionPage() {
 
   const handleEndSession = () => {
     if (confirm("Are you sure you want to end this session? All participants will be notified.")) {
-      endSessionMutation.mutate(id, { onSuccess: () => navigate("/dashboard") });
+      endSessionMutation.mutate(id, { 
+        onSuccess: () => navigate("/dashboard"),
+        onError: (err) => {
+          console.error("Failed to end session:", err);
+          toast.error("Failed to end session");
+        }
+      });
     }
   };
 
@@ -489,6 +511,14 @@ function SessionPage() {
       difficulty: session.difficulty || 'easy',
       description: session.description || 'Saved from session',
       starterCode: codeByLanguage
+    }, {
+      onSuccess: () => {
+        toast.success("Progress saved successfully!");
+      },
+      onError: (err) => {
+        console.error("Failed to save progress:", err);
+        toast.error("Failed to save progress");
+      }
     });
   };
 
@@ -514,7 +544,6 @@ function SessionPage() {
     const newControlTarget = controlHandedTo === otherUser.clerkId ? null : otherUser.clerkId;
     
     if (newControlTarget) {
-        // Hand off control to partner
         const success = handoffControl(
             newControlTarget,
             user?.id,
@@ -525,9 +554,10 @@ function SessionPage() {
         if (success) {
             setControlHandedTo(newControlTarget);
             toast.success(`You handed control to ${otherUser.name}`);
+        } else {
+            toast.error("Failed to handoff control");
         }
     } else {
-        // Take back control
         const success = revokeControl(
             user?.id,
             user?.fullName || "Your partner"
@@ -536,6 +566,8 @@ function SessionPage() {
         if (success) {
             setControlHandedTo(null);
             toast.success("You took back control!");
+        } else {
+            toast.error("Failed to take back control");
         }
     }
   };
