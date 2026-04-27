@@ -159,11 +159,6 @@ function CommunityPage() {
 
         if (isCancelled) return;
 
-        // 🛡️ Senior Dev: Final safety check before watching channel
-        if (!client.tokenManager?.token) {
-            throw new Error("Token was not properly set by connectUser");
-        }
-
         const communityChannel = client.channel("messaging", "arena-global-community");
         await communityChannel.watch({ presence: true });
 

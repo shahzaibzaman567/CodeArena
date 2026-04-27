@@ -1,10 +1,12 @@
-import { chatClient, streamClient } from "../lib/stream.js";
+import { getChatClient, getStreamClient } from "../lib/stream.js";
 
 const COMMUNITY_CHANNEL_ID = "arena-global-community";
 
 export const getStreamToken = async (req, res) => {
   try {
     const userId = req.user.clerkId;
+    const chatClient = getChatClient();
+    const streamClient = getStreamClient();
 
     // 1. Ensure the user exists in Stream
     await chatClient.upsertUser({

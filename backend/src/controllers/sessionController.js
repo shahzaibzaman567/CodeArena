@@ -1,6 +1,6 @@
 import Session from "../models/Session.js";
 import User from "../models/User.js";
-import { chatClient, streamClient } from "../lib/stream.js";
+import { getChatClient, getStreamClient } from "../lib/stream.js";
 import { clerkClient } from "@clerk/express";
 export async function createSession(req, res) {
     let session;
@@ -37,7 +37,7 @@ export async function createSession(req, res) {
         });
         //create stream video call — upsert user first so Stream never rejects with "user not found"
         try {
-            await chatClient.upsertUser({
+            await getChatClient().upsertUser({
                 id: clerkId,
                 name: req.user.name || clerkId,
                 image: req.user.profileImage || "",
@@ -47,7 +47,7 @@ export async function createSession(req, res) {
             console.warn("Stream user upsert warning (non-fatal):", upsertErr.message);
         }
 
-        const call = streamClient.video.call("default", callId);
+        const call = getStreamClient().video.call("default", callId);
         await call.getOrCreate({
             data: {
                 created_by_id: clerkId,
@@ -57,7 +57,7 @@ export async function createSession(req, res) {
         });
         // Chat Messaging
 
-        const channel = chatClient.channel("messaging", callId, {
+        const channel = getChatClient().channel("messaging", callId, {
             name: `${problem} Session`,
             created_by_id: clerkId,
             members: [{ user_id: clerkId }],
@@ -160,13 +160,12 @@ export async function getSessionById(req, res) {
         if (isHost || isParticipant) {
             try {
                 // Ensure membership in Video Call
-                const call = streamClient.video.call("default", session.callId);
+                const call = getStreamClient().video.call("default", session.callId);
                 await call.updateCallMembers({
                     update_members: [{ user_id: clerkId, role: isHost ? "admin" : "user" }]
                 });
 
-                // Ensure membership in Chat Channel
-                const channel = chatClient.channel("messaging", session.callId);
+                const channel = getChatClient().channel("messaging", session.callId);
                 await channel.addMembers([clerkId]);
             } catch (streamErr) {
                 console.warn("Stream membership sync warning:", streamErr.message);
@@ -220,12 +219,12 @@ export async function joinSession(req, res) {
         session.participant = userId;
         await session.save();
 
-        const call = streamClient.video.call("default", session.callId);
+        const call = getStreamClient().video.call("default", session.callId);
         await call.updateCallMembers({
             update_members: [{ user_id: clerkId, role: "user" }]
         });
 
-        const channel = chatClient.channel("messaging", session.callId);
+        const channel = getChatClient().channel("messaging", session.callId);
         await channel.addMembers([clerkId]);
         res.status(200).json({ session });
     } catch (err) {
@@ -261,7 +260,7 @@ export async function endSession(req, res) {
 
         // delete stream video call — non-fatal if already deleted
         try {
-            const call = streamClient.video.call("default", session.callId);
+            const call = getStreamClient().video.call("default", session.callId);
             await call.delete({ hard: true });
         } catch (callErr) {
             // Call may already be deleted or never created — not a fatal error
@@ -270,7 +269,7 @@ export async function endSession(req, res) {
 
         // delete stream chat channel — non-fatal if already deleted
         try {
-            const channel = chatClient.channel("messaging", session.callId);
+            const channel = getChatClient().channel("messaging", session.callId);
             await channel.delete();
         } catch (channelErr) {
             // Channel may already be deleted or never created — not a fatal error

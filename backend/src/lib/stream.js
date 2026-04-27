@@ -1,33 +1,59 @@
 import { StreamChat } from "stream-chat";
 import { StreamClient } from "@stream-io/node-sdk";
-import { ENV } from "./env.js";
 
-const apiKey = ENV.STREAM_API_KEY;
-const apiSecret = ENV.STREAM_API_SECRET;
 const STREAM_TIMEOUT_MS = 30000;
 
-if (!apiKey || !apiSecret) {
-  throw new Error("STREAM_API_KEY or STREAM_API_SECRET is missing in env variables");
+function getApiKey() {
+  const key = process.env.STREAM_API_KEY;
+  if (!key) throw new Error("STREAM_API_KEY is missing in environment variables");
+  return key;
 }
 
- // This is used for video calling
-export const streamClient = new StreamClient(apiKey, apiSecret, {
-  timeout: STREAM_TIMEOUT_MS,
+function getApiSecret() {
+  const secret = process.env.STREAM_API_SECRET;
+  if (!secret) throw new Error("STREAM_API_SECRET is missing in environment variables");
+  return secret;
+}
+
+// Lazy singletons — created on first use, not at module load time
+let _streamClient = null;
+let _chatClient = null;
+
+export function getStreamClient() {
+  if (!_streamClient) {
+    _streamClient = new StreamClient(getApiKey(), getApiSecret(), {
+      timeout: STREAM_TIMEOUT_MS,
+    });
+  }
+  return _streamClient;
+}
+
+export function getChatClient() {
+  if (!_chatClient) {
+    _chatClient = StreamChat.getInstance(getApiKey(), getApiSecret(), {
+      disableCache: true,
+      timeout: STREAM_TIMEOUT_MS,
+    });
+  }
+  return _chatClient;
+}
+
+// Keep named exports for backward compatibility with existing imports
+export const streamClient = new Proxy({}, {
+  get(_, prop) {
+    return getStreamClient()[prop];
+  }
 });
 
-export const chatClient = StreamChat.getInstance(apiKey, apiSecret, { // This is for chat feature
-  disableCache: true,
-  timeout: STREAM_TIMEOUT_MS,
+export const chatClient = new Proxy({}, {
+  get(_, prop) {
+    return getChatClient()[prop];
+  }
 });
 
 export const upsertStreamUser = async (userData) => {
   try {
-    console.log("📤 Sending user to Stream:", userData);
-
-    const result = await chatClient.upsertUser(userData);
-
-    console.log("✅ Stream user synced:", userData.id);
-
+    const result = await getChatClient().upsertUser(userData);
     return result;
   } catch (err) {
     console.error("❌ Stream upsert failed:", err.message);
@@ -37,10 +63,7 @@ export const upsertStreamUser = async (userData) => {
 
 export const deleteStreamUser = async (userId) => {
   try {
-    await chatClient.deleteUser(userId.toString());
-
-    console.log("✅ Stream user deleted:", userId);
-
+    await getChatClient().deleteUser(userId.toString());
     return { success: true };
   } catch (err) {
     console.error("❌ Stream delete failed:", err.message);
