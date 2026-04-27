@@ -14,6 +14,7 @@ import {
   VideoIcon,
   Code2Icon,
   UserIcon,
+  X,
 } from "lucide-react";
 import Hero from "../../public/hero.png";
 
@@ -108,10 +109,13 @@ function HomePage() {
                   </button>
                 </SignInButton>
 
-                <button className="group btn btn-outline btn-md sm:btn-lg flex-1 text-xs font-bold whitespace-nowrap px-4">
+                <Link
+                  to="/demo"
+                  className="group btn btn-outline btn-md sm:btn-lg flex-1 text-xs font-bold whitespace-nowrap px-4"
+                >
                   <VideoIcon className="size-4 shrink-0 group-hover:scale-110 transition-transform" />
                   Watch Demo
-                </button>
+                </Link>
               </div>
 
               {/* Stats Section - Matching Button Width */}

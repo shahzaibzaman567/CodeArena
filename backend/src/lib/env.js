@@ -10,6 +10,9 @@ export let ENV = {
     STREAM_API_KEY: process.env.STREAM_API_KEY,
     STREAM_API_SECRET: process.env.STREAM_API_SECRET,
     CLIENT_URL: process.env.CLIENT_URL?.replace(/\/$/, ""),
+    // Feature 2: AI Code Helper
+    CLAUDE_API_KEY: process.env.CLAUDE_API_KEY,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
 };
 
 // console.log("PORT:", ENV.DB_URL);

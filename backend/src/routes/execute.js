@@ -9,7 +9,7 @@ const JUDGE0_API_KEY = process.env.JUDGE0_API_KEY;
 const LANGUAGE_IDS = {
   python: 71,           // Python 3.11.0
   javascript: 63,       // JavaScript (Node.js 18.15.0)
-  typescript: 63,       // TypeScript compiles to JS
+  typescript: 74,       // TypeScript (5.0.3)
   java: 91,             // Java 17.0.6
   c: 50,                // C (GCC 9.4.0)
   cpp: 54,              // C++ (GCC 9.4.0)
@@ -29,10 +29,10 @@ const LANGUAGE_IDS = {
 };
 
 /**
- * POST /api/execute
+ * POST /
  * Execute code using Judge0 API (RapidAPI)
  */
-router.post("/execute", async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const { language, code, stdin = "", args = [] } = req.body;
 
@@ -64,17 +64,25 @@ router.post("/execute", async (req, res) => {
       enable_network: false,    // Security: no network access
     };
 
-    // Submit to Judge0 - RapidAPI Headers
-    const headers = {
+    const useRapidApi = Boolean(JUDGE0_API_KEY && JUDGE0_API_KEY.trim());
+    const commonHeaders = {
       "Content-Type": "application/json",
-      "X-RapidAPI-Key": JUDGE0_API_KEY,
-      "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com"
+    };
+
+    const submitHeaders = {
+      ...commonHeaders,
+      ...(useRapidApi
+        ? {
+            "X-RapidAPI-Key": JUDGE0_API_KEY,
+            "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com",
+          }
+        : {}),
     };
 
     // Step 1: Submit the code
     const submitResponse = await fetch(`${JUDGE0_API_URL}/submissions?base64_encoded=false&wait=false`, {
       method: "POST",
-      headers,
+      headers: submitHeaders,
       body: JSON.stringify(submission),
     });
 
@@ -107,13 +115,19 @@ router.post("/execute", async (req, res) => {
       await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
 
       try {
+        const resultHeaders = {
+          ...(useRapidApi
+            ? {
+                "X-RapidAPI-Key": JUDGE0_API_KEY,
+                "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com",
+              }
+            : {}),
+        };
+
         const resultResponse = await fetch(
           `${JUDGE0_API_URL}/submissions/${token}?base64_encoded=false&fields=stdout,stderr,compile_output,message,status,time,memory`,
           {
-            headers: {
-              "X-RapidAPI-Key": JUDGE0_API_KEY,
-              "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com"
-            }
+            headers: resultHeaders,
           }
         );
 

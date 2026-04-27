@@ -10,6 +10,13 @@ export const sessionApi = {
     const response = await axiosInstance.get("/sessions/active");
     return response.data;
   },
+  
+  // Feature 1: Search sessions
+  searchSessions: async (query) => {
+    const response = await axiosInstance.get("/sessions/search", { params: { query } });
+    return response.data;
+  },
+  
   getMyRecentSessions: async () => {
     const response = await axiosInstance.get("/sessions/my-recent");
     return response.data;
@@ -24,8 +31,20 @@ export const sessionApi = {
     const response = await axiosInstance.post(`/sessions/${id}/join`);
     return response.data;
   },
+  updateSession: async (id, data) => {
+    const response = await axiosInstance.put(`/sessions/${id}`, data);
+    return response.data;
+  },
   endSession: async (id) => {
     const response = await axiosInstance.post(`/sessions/${id}/end`);
+    return response.data;
+  },
+  deleteSession: async (id) => {
+    const response = await axiosInstance.delete(`/sessions/${id}`);
+    return response.data;
+  },
+  searchUserByEmail: async (email) => {
+    const response = await axiosInstance.get(`/sessions/search-user`, { params: { email } });
     return response.data;
   },
   getStreamToken: async () => {
