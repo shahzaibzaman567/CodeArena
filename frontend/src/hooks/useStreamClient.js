@@ -18,6 +18,7 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
     let videoCall = null;
     let videoClient = null;
     let chatClientInstance = null;
+    let callJoined = false; // track whether join() actually completed
 
     const initCall = async () => {
       if (!session?.callId || (!isHost && !isParticipant) || session.status === "completed") {
@@ -43,6 +44,7 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
 
         videoCall = videoClient.call("default", session.callId);
         await videoCall.join({ create: true });
+        callJoined = true; // only set after successful join
 
         if (isCancelled) return;
         setCall(videoCall);
@@ -76,8 +78,8 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
       } catch (error) {
         if (!isCancelled) {
           toast.error("Failed to join video call");
+          console.error("Stream init error:", error.message);
         }
-        console.error("Error init call", error);
       } finally {
         if (!isCancelled) {
           setIsInitializingCall(false);
@@ -91,13 +93,32 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
       isCancelled = true;
       const cleanup = async () => {
         try {
-          if (videoCall) await videoCall.leave();
-          if (chatClientInstance && chatClientInstance.userID) {
+          // Only leave if join() actually completed — prevents "already left" error
+          if (videoCall && callJoined) {
+            await videoCall.leave();
+          }
+        } catch (err) {
+          // Silently ignore SFU stats flush errors and "already left" errors
+          const msg = err?.message || "";
+          if (
+            !msg.includes("already been left") &&
+            !msg.includes("SfuStatsReporter") &&
+            !msg.includes("flush")
+          ) {
+            console.error("Call leave error:", msg);
+          }
+        }
+        try {
+          if (chatClientInstance?.userID) {
             await chatClientInstance.disconnectUser();
           }
+        } catch {
+          // ignore chat disconnect errors on cleanup
+        }
+        try {
           if (videoClient) await disconnectStreamClient(videoClient);
-        } catch (error) {
-          console.error("Cleanup error:", error);
+        } catch {
+          // ignore video client disconnect errors on cleanup
         }
       };
       cleanup();

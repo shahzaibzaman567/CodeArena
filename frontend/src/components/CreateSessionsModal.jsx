@@ -75,7 +75,7 @@ function CreateSessionModal({
                 className="btn btn-xs btn-outline btn-primary"
                 onClick={() => {
                   setCustomProblem(!customProblem);
-                  setRoomConfig({ ...roomConfig, problem: "", difficulty: "easy", problemId: null });
+                  setRoomConfig({ ...roomConfig, problem: "", difficulty: customProblem ? "" : "easy", problemId: null });
                 }}
               >
                 {customProblem ? "Select from list" : "Use custom name"}

@@ -1,5 +1,5 @@
-const baseUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || 'http://localhost:4000';
-const CODE_EXECUTION_API = `${baseUrl}/api/execute`;
+const baseUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '';
+const CODE_EXECUTION_API = baseUrl ? `${baseUrl}/api/execute` : '/api/execute';
 
 const SUPPORTED_LANGUAGES = [
   "javascript",

@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@clerk/clerk-react";
 import { useState } from "react";
+import toast from "react-hot-toast";
 import { useActiveSessions, useCreateSession, useMyRecentSessions } from "../hooks/useSessions.js";
 import { sessionApi } from "../api/sessions.js";
 
@@ -49,7 +50,14 @@ function DashboardPage() {
   };
 
   const handleCreateRoom = () => {
-    if (!roomConfig.problem || !roomConfig.difficulty) return;
+    if (!roomConfig.problem?.trim()) {
+      toast.error("Please enter a problem name");
+      return;
+    }
+    if (!roomConfig.difficulty) {
+      toast.error("Please select a difficulty");
+      return;
+    }
 
     createSessionMutation.mutate(
       {

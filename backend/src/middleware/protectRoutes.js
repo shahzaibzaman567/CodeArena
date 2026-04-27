@@ -4,7 +4,7 @@ import User from '../models/User.js'
 export const protectRoute = [
 
     // Use requireAuth() to protect this route
-    requireAuth({signInUrl:"/sigin"}),
+    requireAuth({ signInUrl: "/sign-in" }),
     async (req, res, next) => {
         try {
             const clerkId = req.auth.userId;

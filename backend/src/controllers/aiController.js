@@ -45,17 +45,12 @@ User Question/Hint Request: ${hint || "Analyze my code"}
 
     for (const modelName of modelsToTry) {
       try {
-        console.log(`Trying Gemini model: ${modelName}`);
         const model = genAI.getGenerativeModel({ model: modelName });
         const result = await model.generateContent([systemPrompt, userPrompt]);
         const response = await result.response;
         responseText = response.text();
-        if (responseText) {
-            console.log(`Success with model: ${modelName}`);
-            break;
-        }
+        if (responseText) break;
       } catch (err) {
-        console.error(`Gemini Error (${modelName}):`, err.message);
         lastError = err;
       }
     }
@@ -88,6 +83,8 @@ export async function getCodeReview(req, res) {
     if (!code) return res.status(400).json({ message: "Code is required" });
 
     const apiKey = ENV.GEMINI_API_KEY || ENV.CLAUDE_API_KEY;
+    if (!apiKey) return res.status(500).json({ message: "AI service not configured" });
+
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
@@ -122,10 +119,11 @@ export async function translateCode(req, res) {
             Problem Description: ${problemDescription || "General coding problem"}
             
             IMPORTANT:
-            1. If the target language is a compiled language like C#, Java, or C++, you MUST provide a complete, RUNNABLE program with all necessary boilerplate (e.g., classes, namespaces, and the Main entry point).
-            2. For Java, use "Main" as the class name (DO NOT use "Solution").
-            3. For C#, use "Main" as the class name and "Main" as the method name.
-            4. ONLY output the raw source code. No markdown formatting, no explanations.
+            1. If the target language is a compiled language like C#, Java, or C++, you MUST provide a complete, RUNNABLE program with all necessary boilerplate.
+            2. For Java, use "Solution" as the class name with a public static void main(String[] args) entry point.
+            3. For C#, use "Solution" as the class name (NOT "Main") and "Main" as the static entry method inside it. Example: class Solution { static void Main(string[] args) { ... } }
+            4. For C++, wrap code in a standard main() function.
+            5. ONLY output the raw source code. No markdown formatting, no explanations, no code fences.
             
             Source Code to Translate:
             ${code}`;

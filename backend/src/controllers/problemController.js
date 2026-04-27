@@ -73,7 +73,9 @@ export const createProblem = async (req, res) => {
 export const getProblems = async (req, res) => {
   try {
     const { search } = req.query;
-    const isAdminUser = req.user?.email === "shahzaibzaman465@gmail.com";
+    // req.user may be undefined on public route — check safely
+    const userEmail = req.user?.email;
+    const isAdminUser = userEmail === "shahzaibzaman465@gmail.com";
 
     let query = {};
     if (search) {

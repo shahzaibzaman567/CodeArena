@@ -151,7 +151,6 @@ router.post("/", async (req, res) => {
         
         break; // Got final result
       } catch (pollError) {
-        console.error("Poll error:", pollError);
         attempts++;
         continue;
       }
@@ -166,18 +165,22 @@ router.post("/", async (req, res) => {
     }
 
     // Step 3: Format response for frontend
-    const stdout = result.stdout || "";
-    const stderr = result.stderr || "";
-    const compileOutput = result.compile_output || "";
-    const fullOutput = `${compileOutput}${stdout}${stderr}`.trim();
+    const stdout = (result.stdout || "").trim();
+    const stderr = (result.stderr || "").trim();
+    const compileOutput = (result.compile_output || "").trim();
 
-    // Judge0 status mapping: 3 = Accepted (success)
+    // Judge0 status 3 = Accepted = success. Everything else is a failure.
     const success = result.status.id === 3;
+
+    // Build output: show stdout on success, compile/runtime errors on failure
+    const output = success
+      ? stdout
+      : compileOutput || stderr || result.status.description || "Execution failed";
 
     return res.json({
       success,
-      output: success ? stdout : fullOutput,
-      error: !success ? fullOutput : null,
+      output: output || (success ? "(no output)" : ""),
+      error: success ? null : output,
       time: result.time || 0,
       memory: result.memory || 0,
       status: {

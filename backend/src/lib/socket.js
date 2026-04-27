@@ -1,11 +1,28 @@
 import { Server } from 'socket.io';
 
+function getSocketAllowedOrigins() {
+  const base = ['http://localhost:5173', 'http://localhost:3000'];
+  const clientUrl = process.env.CLIENT_URL;
+  if (!clientUrl) return base;
+  const extra = clientUrl.split(',').map(o => o.trim()).filter(Boolean);
+  return [...new Set([...base, ...extra])];
+}
+
 // 🛡️ Senior Dev: Initialize Socket.io for persistent WebSocket connections
 // Used for real-time control transfer and session state management
 export function initializeSocket(httpServer) {
+  const allowedOrigins = getSocketAllowedOrigins();
+
   const io = new Server(httpServer, {
     cors: {
-      origin: process.env.CLIENT_URL || "http://localhost:5173",
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, origin);
+        }
+        console.warn(`⚠️ Socket.io CORS blocked: ${origin}`);
+        return callback(new Error(`CORS: origin ${origin} not allowed`));
+      },
       credentials: true
     },
     transports: ['websocket', 'polling'],

@@ -21,25 +21,47 @@ const app = express();
 const httpServer = createServer(app);
 const io = initializeSocket(httpServer);
 setIOInstance(io);
+
+// Build allowed origins at request-time so Vercel env vars are always fresh
+function getAllowedOrigins() {
+  const base = ['http://localhost:5173', 'http://localhost:3000'];
+  // Read directly from process.env — ENV object is a snapshot and may miss Vercel vars
+  const clientUrl = process.env.CLIENT_URL;
+  if (!clientUrl) return base;
+  const extra = clientUrl.split(',').map(o => o.trim()).filter(Boolean);
+  return [...new Set([...base, ...extra])];
+}
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      const allowedOrigins = ENV.CLIENT_URL
-        ? ENV.CLIENT_URL.split(',')
-        : [
-            'http://localhost:5173',
-            'https://code-arena-oyjebv1j0-shahzaibzaman465s-projects.vercel.app'
-          ];
-
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(null, true); // 🔥 TEMP FIX (prevents Vercel blocking)
-      }
+      // Allow no-origin requests (Postman, curl, server-to-server, Inngest)
+      if (!origin) return callback(null, true);
+      const allowed = getAllowedOrigins();
+      if (allowed.includes(origin)) return callback(null, origin);
+      console.warn(`⚠️ CORS blocked: ${origin}`);
+      return callback(new Error(`CORS: origin ${origin} not allowed`));
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-clerk-auth'],
+    optionsSuccessStatus: 200,
   })
 );
+
+// Explicit OPTIONS preflight handler for Express 5 (wildcard syntax changed)
+app.options(/.*/, cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const allowed = getAllowedOrigins();
+    if (allowed.includes(origin)) return callback(null, origin);
+    return callback(new Error(`CORS: origin ${origin} not allowed`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-clerk-auth'],
+  optionsSuccessStatus: 200,
+}));
 app.use(express.json());
 app.use(clerkMiddleware())//this add auth field to request object : req.auth()
 
@@ -99,20 +121,37 @@ app.post("/api/webhook/clerk", async (req, res) => {
   }
 });
 
-const startServer = async () => {
-  try {
-    await connectDB();
-
-    // 🛡️ Senior Dev: Listen on httpServer instead of app for Socket.io
-    httpServer.listen(ENV.port, () => {
-      console.log(`🚀 Server running on port ${ENV.port}`);
-      console.log(`🔌 Socket.io ready for WebSocket connections`);
-    });
-  } catch (error) {
-    console.error("❌ Failed to start server:", error);
+// Global error handler — re-apply CORS headers so errors don't strip them
+app.use((err, req, res, next) => {
+  const origin = req.headers.origin;
+  const allowed = getAllowedOrigins();
+  if (origin && allowed.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
   }
-};
+  console.error('❌ Global error:', err.message);
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal Server Error',
+  });
+});
 
-startServer();
+// Start server (dev only — Vercel handles its own lifecycle in production)
+if (process.env.NODE_ENV !== "production") {
+  connectDB()
+    .then(() => {
+      httpServer.listen(ENV.port, () => {
+        console.log(`🚀 Server running on port ${ENV.port}`);
+        console.log(`🔌 Socket.io ready for WebSocket connections`);
+      });
+    })
+    .catch((err) => {
+      console.error("❌ Failed to start server:", err);
+    });
+} else {
+  // Serverless cold-start: connect DB once per instance
+  connectDB().catch((err) => {
+    console.error("❌ Database connection failed:", err);
+  });
+}
 
 export default app;

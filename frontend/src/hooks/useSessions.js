@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import { sessionApi } from "../api/sessions";
 
 const getErrorMessage = (error, fallback) =>
-  error.response?.data?.error || error.response?.data?.message || fallback;
+  error.response?.data?.message || error.response?.data?.error || error.message || fallback;
 
 export const useCreateSession = () => {
   const queryClient = useQueryClient();
@@ -116,7 +116,7 @@ export const useUpdateSession = () => {
     mutationFn: ({ id, data }) => sessionApi.updateSession(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["session", id] });
-      toast.success("Session updated!");
+      // No toast here — this fires on every debounced code sync
     },
     onError: (error) => toast.error(getErrorMessage(error, "Failed to update session")),
   });

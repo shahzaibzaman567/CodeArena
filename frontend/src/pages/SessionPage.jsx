@@ -24,7 +24,7 @@ import {
   ArrowRightIcon 
 } from "lucide-react";
 import CodeEditorPanel from "../components/codeEditor.jsx";
-import OutputPanel from "../components/OutputPanel.jsx";
+import OutputPanel from "../components/outputPanel.jsx";
 import { debounce } from "lodash-es";
 
 import useStreamClient from "../hooks/useStreamClient.js";
@@ -263,6 +263,7 @@ function SessionPage() {
     };
 
     channel.on("code_update", handleStreamEvent);
+    channel.on("language_change", handleStreamEvent);
     channel.on("control_handoff", handleStreamEvent);
     channel.on("code_run", handleStreamEvent);
     channel.on("run_results", handleStreamEvent);
@@ -270,6 +271,7 @@ function SessionPage() {
     return () => {
       try {
         channel.off("code_update", handleStreamEvent);
+        channel.off("language_change", handleStreamEvent);
         channel.off("control_handoff", handleStreamEvent);
         channel.off("code_run", handleStreamEvent);
         channel.off("run_results", handleStreamEvent);
@@ -284,10 +286,7 @@ function SessionPage() {
 
     const handleControlUpdate = (data) => {
       try {
-        const { currentControlUserId, previousControlUserId, fromUserName, toUserName } = data;
-        
-        console.log(`🎮 Control updated:`, data);
-        
+        const { currentControlUserId, fromUserName, toUserName } = data;
         setControlHandedTo(currentControlUserId);
         
         if (currentControlUserId === user?.id) {
@@ -303,9 +302,6 @@ function SessionPage() {
     const handleControlRelease = (data) => {
       try {
         const { releasedByUserName } = data;
-        
-        console.log(`🎮 Control released by:`, data);
-        
         setControlHandedTo(null);
         toast(`${releasedByUserName} took back control.`, { icon: '🕹️' });
       } catch (error) {
@@ -394,14 +390,12 @@ function SessionPage() {
     if (hasMeaningfulSource && targetIsEmptyOrStarter && oldLang !== newLang) {
       setIsTranslating(true);
       try {
-        console.log(`[Translation] Translating from ${oldLang} to ${newLang}, source length: ${sourceCode.length}`);
         const { translatedCode } = await aiApi.translateCode(
           sourceCode,
           oldLang,
           newLang,
           session?.problem || problemData?.description || ""
         );
-        console.log(`[Translation] Success! Translated code length: ${translatedCode?.length || 0}`);
         setCodeByLanguage(prev => ({
           ...prev,
           [newLang]: translatedCode

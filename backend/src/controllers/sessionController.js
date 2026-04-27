@@ -35,7 +35,18 @@ export async function createSession(req, res) {
             maxParticipants: maxParticipants || 1,
             invitedUsers
         });
-        //create stream video call
+        //create stream video call — upsert user first so Stream never rejects with "user not found"
+        try {
+            await chatClient.upsertUser({
+                id: clerkId,
+                name: req.user.name || clerkId,
+                image: req.user.profileImage || "",
+                role: "user",
+            });
+        } catch (upsertErr) {
+            console.warn("Stream user upsert warning (non-fatal):", upsertErr.message);
+        }
+
         const call = streamClient.video.call("default", callId);
         await call.getOrCreate({
             data: {
@@ -70,12 +81,14 @@ export async function createSession(req, res) {
             (err.message.includes("GetOrCreateCall failed") ||
                 err.message.includes("timeout") ||
                 err.message.includes("api_key not found") ||
-                err.message.includes("Stream error"));
+                err.message.includes("Stream error") ||
+                err.message.includes("user not found") ||
+                err.message.includes("rate limit"));
 
         res.status(500).json({
             message: streamFailure
-                ? "Stream service is not configured correctly"
-                : "Internal Server Error",
+                ? `Stream error: ${err.message}`
+                : err.message || "Internal Server Error",
             error: err.message,
         });
     }
@@ -246,13 +259,23 @@ export async function endSession(req, res) {
             return res.status(403).json({ message: "Only the host can end the session" });
         }
 
-        // delete stream video call
-        const call = streamClient.video.call("default", session.callId);
-        await call.delete({ hard: true });
+        // delete stream video call — non-fatal if already deleted
+        try {
+            const call = streamClient.video.call("default", session.callId);
+            await call.delete({ hard: true });
+        } catch (callErr) {
+            // Call may already be deleted or never created — not a fatal error
+            console.warn("Stream call delete warning (non-fatal):", callErr.message);
+        }
 
-        //delete stream chat channel
-        const channel = chatClient.channel("messaging", session.callId);
-        await channel.delete();
+        // delete stream chat channel — non-fatal if already deleted
+        try {
+            const channel = chatClient.channel("messaging", session.callId);
+            await channel.delete();
+        } catch (channelErr) {
+            // Channel may already be deleted or never created — not a fatal error
+            console.warn("Stream channel delete warning (non-fatal):", channelErr.message);
+        }
 
         //mark session as completed
         session.status = "completed";

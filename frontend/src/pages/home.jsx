@@ -4,7 +4,6 @@ import {
   SignInButton,
   UserButton,
 } from "@clerk/clerk-react";
-import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
   SparklesIcon,
@@ -16,12 +15,10 @@ import {
   UserIcon,
   X,
 } from "lucide-react";
-import Hero from "../../public/hero.png";
+const Hero = "/hero.png";
 
 function HomePage() {
-  const { data } = useQuery({
-    queryFn: () => fetch("api/books").then((res) => res.json()),
-  });
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-base-100 via-base-200 to-base-300">

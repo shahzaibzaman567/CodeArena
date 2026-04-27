@@ -12,10 +12,9 @@ try{
 });
     console.log("✅ Connected to mongoDB : " , connect.connection.host )
 }catch(err){
-    //check error 
-console.log(" Erro " , err)
-//process to exit
-process.exit(1)// 0 means success and 1 means fail
+    console.error("DB connection error:", err.message);
+    // Don't call process.exit in serverless — throw so caller can handle
+    throw err;
 }
 
 }
