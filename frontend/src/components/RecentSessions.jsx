@@ -1,16 +1,52 @@
-import { Code2, Clock, Users, Trophy, Loader } from "lucide-react";
+import { Code2, Clock, Users, Trophy, Loader, Trash2, Search, User as UserIcon } from "lucide-react";
 import { getDifficultyBadgeClass } from "../lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { useState } from "react";
+import { useDeleteSession } from "../hooks/useSessions";
+import { useUser } from "@clerk/clerk-react";
 
 function RecentSessions({ sessions, isLoading }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const deleteSessionMutation = useDeleteSession();
+  const { user } = useUser();
+
+  const filteredSessions = sessions.filter((session) =>
+    session.problem.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleDelete = (e, id) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (window.confirm("Are you sure you want to delete this session?")) {
+      deleteSessionMutation.mutate(id);
+    }
+  };
+
   return (
     <div className="card bg-base-100 border-2 border-accent/20 hover:border-accent/30 mt-8">
       <div className="card-body">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-gradient-to-br from-accent to-secondary rounded-xl">
-            <Clock className="w-5 h-5 text-white" />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-accent to-secondary rounded-xl">
+              <Clock className="w-5 h-5 text-white" />
+            </div>
+            <h2 className="text-2xl font-black">Your Past Sessions</h2>
           </div>
-          <h2 className="text-2xl font-black">Your Past Sessions</h2>
+
+          <div className="form-control">
+            <div className="input-group">
+              <label className="input input-bordered input-sm flex items-center gap-2">
+                <Search className="w-4 h-4 opacity-70" />
+                <input
+                  type="text"
+                  placeholder="Search past sessions..."
+                  className="grow"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </label>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -18,23 +54,24 @@ function RecentSessions({ sessions, isLoading }) {
             <div className="col-span-full flex items-center justify-center py-20">
               <Loader className="w-10 h-10 animate-spin text-primary" />
             </div>
-          ) : sessions.length > 0 ? (
-            sessions.map((session) => (
+          ) : filteredSessions.length > 0 ? (
+            filteredSessions.map((session) => (
               <div
                 key={session._id}
-                className={`card relative ${
+                className={`card relative group ${
                   session.status === "active"
                     ? "bg-success/10 border-success/30 hover:border-success/60"
                     : "bg-base-200 border-base-300 hover:border-primary/30"
                 }`}
               >
-                {session.status === "active" && (
-                  <div className="absolute top-3 right-3">
-                    <div className="badge badge-success gap-1">
-                      <div className="w-1.5 h-1.5 bg-success rounded-full animate-pulse" />
-                      ACTIVE
-                    </div>
-                  </div>
+                {session.host?.clerkId === user?.id && (
+                  <button
+                    onClick={(e) => handleDelete(e, session._id)}
+                    className="absolute top-3 right-3 p-2 bg-error/10 text-error rounded-lg hover:bg-error hover:text-white transition-colors border border-error/20"
+                    title="Delete Session"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 )}
 
                 <div className="card-body p-5">
@@ -67,17 +104,26 @@ function RecentSessions({ sessions, isLoading }) {
                         })}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4" />
-                      <span>
-                        {session.participant ? "2" : "1"} participant
-                        {session.participant ? "s" : ""}
-                      </span>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <UserIcon className="w-4 h-4 text-primary" />
+                        <span className="font-medium">Host:</span>
+                        <span className="truncate">{session.host?.name || "Unknown"}</span>
+                      </div>
+                      {session.participant && (
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-secondary" />
+                          <span className="font-medium">User:</span>
+                          <span className="truncate">{session.participant?.name || "Guest"}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-3 border-t border-base-300">
-                    <span className="text-xs font-semibold opacity-80 uppercase">Completed</span>
+                    <span className="text-xs font-semibold opacity-80 uppercase">
+                      {session.status}
+                    </span>
                     <span className="text-xs opacity-40">
                       {new Date(session.updatedAt).toLocaleDateString()}
                     </span>
@@ -90,8 +136,12 @@ function RecentSessions({ sessions, isLoading }) {
               <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-accent/20 to-secondary/20 rounded-3xl flex items-center justify-center">
                 <Trophy className="w-10 h-10 text-accent/50" />
               </div>
-              <p className="text-lg font-semibold opacity-70 mb-1">No sessions yet</p>
-              <p className="text-sm opacity-50">Start your coding journey today!</p>
+              <p className="text-lg font-semibold opacity-70 mb-1">
+                {searchQuery ? "No matching sessions" : "No sessions yet"}
+              </p>
+              <p className="text-sm opacity-50">
+                {searchQuery ? "Try a different search term" : "Start your coding journey today!"}
+              </p>
             </div>
           )}
         </div>

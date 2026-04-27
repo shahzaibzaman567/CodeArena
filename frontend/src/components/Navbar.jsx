@@ -1,11 +1,20 @@
-import { Link, useLocation } from "react-router";
-import { BookOpenIcon, LayoutDashboardIcon, SparklesIcon } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { BookOpenIcon, LayoutDashboardIcon, SparklesIcon, UsersIcon } from "lucide-react";
 import { UserButton } from "@clerk/clerk-react";
 
 function Navbar() {
   const location = useLocation();
 
-  console.log(location);
+  const [hasCommunityNotification, setHasCommunityNotification] = useState(false);
+
+  useEffect(() => {
+    const handleNotify = (e) => {
+      setHasCommunityNotification(e.detail.hasNew);
+    };
+    window.addEventListener('arena-community-notify', handleNotify);
+    return () => window.removeEventListener('arena-community-notify', handleNotify);
+  }, []);
 
   const isActive = (path) => location.pathname === path;
 
@@ -48,7 +57,32 @@ function Navbar() {
             </div>
           </Link>
 
-          {/* DASHBORD PAGE LINK */}
+          {/* COMMUNITY PAGE LINK */}
+          <Link
+            to={"/community"}
+            className={`px-4 py-2.5 rounded-lg transition-all duration-200 relative
+              ${
+                isActive("/community")
+                  ? "bg-primary text-primary-content"
+                  : "hover:bg-base-200 text-base-content/70 hover:text-base-content"
+              }
+              `}
+          >
+            <div className="flex items-center gap-x-2.5">
+              <UsersIcon className="size-4" />
+              <span className="font-medium hidden sm:inline">Arena Community</span>
+            </div>
+            
+            {/* Notification Dot */}
+            {hasCommunityNotification && !isActive("/community") && (
+              <span className="absolute top-1 right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-error"></span>
+              </span>
+            )}
+          </Link>
+
+          {/* DASHBOARD PAGE LINK */}
           <Link
             to={"/dashboard"}
             className={`px-4 py-2.5 rounded-lg transition-all duration-200 

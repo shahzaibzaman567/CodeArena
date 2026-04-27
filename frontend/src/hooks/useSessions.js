@@ -44,7 +44,13 @@ export const useSessionById = (id) => {
     queryKey: ["session", id],
     queryFn: () => sessionApi.getSessionById(id),
     enabled: !!id,
-    refetchInterval: 5000, // refetch every 5 seconds to detect session status changes
+    refetchInterval: 5000,
+    retry: (failureCount, error) => {
+      // Don't retry on 404 - session doesn't exist
+      if (error.response?.status === 404) return false;
+      return failureCount < 3;
+    },
+    staleTime: 2000, // Consider data fresh for 2 seconds
   });
 
   return result;
@@ -80,6 +86,39 @@ export const useEndSession = () => {
       toast.success("Session ended successfully!");
     },
     onError: (error) => toast.error(getErrorMessage(error, "Failed to end session")),
+  });
+
+  return result;
+};
+
+export const useDeleteSession = () => {
+  const queryClient = useQueryClient();
+
+  const result = useMutation({
+    mutationKey: ["deleteSession"],
+    mutationFn: sessionApi.deleteSession,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["myRecentSessions"] });
+      queryClient.invalidateQueries({ queryKey: ["activeSessions"] });
+      toast.success("Session deleted successfully!");
+    },
+    onError: (error) => toast.error(getErrorMessage(error, "Failed to delete session")),
+  });
+
+  return result;
+};
+
+export const useUpdateSession = () => {
+  const queryClient = useQueryClient();
+
+  const result = useMutation({
+    mutationKey: ["updateSession"],
+    mutationFn: ({ id, data }) => sessionApi.updateSession(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["session", id] });
+      toast.success("Session updated!");
+    },
+    onError: (error) => toast.error(getErrorMessage(error, "Failed to update session")),
   });
 
   return result;

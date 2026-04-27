@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import { createServer } from "http";
 import { serve } from "inngest/express";
 import { inngest, functions } from "./lib/inngest.js";
 import { connectDB } from "./lib/db.js";
@@ -8,11 +9,34 @@ import { clerkMiddleware } from '@clerk/express'
 import { protectRoute } from "./middleware/protectRoutes.js";
 import { chatRoutes} from "./routes/chatRoute.js"
 import { sessionRoutes } from "./routes/sessionRoutes.js";
-const app = express();
+import { aiRoutes } from "./routes/aiRoutes.js";
+import executeRoutes from "./routes/execute.js";
+import { problemRoutes } from "./routes/problemRoutes.js";
+import { communityRoutes } from "./routes/communityRoutes.js";
+import submissionRoutes from "./routes/submissionRoutes.js";
+import { initializeSocket, setIOInstance } from "./lib/socket.js";
 
+const app = express();
+// 🛡️ Senior Dev: Create HTTP server for Socket.io
+const httpServer = createServer(app);
+const io = initializeSocket(httpServer);
+setIOInstance(io);
 app.use(
   cors({
-    origin: ENV.CLIENT_URL,
+    origin: (origin, callback) => {
+      const allowedOrigins = ENV.CLIENT_URL
+        ? ENV.CLIENT_URL.split(',')
+        : [
+            'http://localhost:5173',
+            'https://code-arena-oyjebv1j0-shahzaibzaman465s-projects.vercel.app'
+          ];
+
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true); // 🔥 TEMP FIX (prevents Vercel blocking)
+      }
+    },
     credentials: true,
   })
 );
@@ -29,6 +53,11 @@ app.use(
 
 app.use("/api/chat",chatRoutes)
 app.use("/api/sessions",sessionRoutes)
+app.use("/api/ai", aiRoutes)
+app.use("/api/execute", executeRoutes)
+app.use("/api/community", communityRoutes);
+app.use("/api/problems", problemRoutes)
+app.use("/api/submissions", submissionRoutes);
 
 app.get("/health", (req, res) => {
   res.json({
@@ -74,8 +103,10 @@ const startServer = async () => {
   try {
     await connectDB();
 
-    app.listen(ENV.port, () => {
+    // 🛡️ Senior Dev: Listen on httpServer instead of app for Socket.io
+    httpServer.listen(ENV.port, () => {
       console.log(`🚀 Server running on port ${ENV.port}`);
+      console.log(`🔌 Socket.io ready for WebSocket connections`);
     });
   } catch (error) {
     console.error("❌ Failed to start server:", error);

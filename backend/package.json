@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@clerk/express": "^1.7.77",
+    "@google/generative-ai": "^0.24.1",
     "@stream-io/node-sdk": "^0.7.12",
     "cors": "^2.8.6",
     "dotenv": "^17.4.0",
@@ -23,6 +24,7 @@
     "inngest": "^3.44.3",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.1.5",
+    "socket.io": "^4.8.3",
     "stream-chat": "^9.41.0"
   }
 }
