@@ -2,8 +2,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { sessionApi } from "../api/sessions";
 
-const getErrorMessage = (error, fallback) =>
-  error.response?.data?.message || error.response?.data?.error || error.message || fallback;
+const getErrorMessage = (error, fallback) => {
+  const data = error?.response?.data;
+  // Guard: data might be a Vercel 404 object {code, message} or a string
+  if (data) {
+    if (typeof data.message === 'string') return data.message;
+    if (typeof data.error === 'string') return data.error;
+  }
+  if (typeof error?.message === 'string') return error.message;
+  return fallback;
+};
 
 export const useCreateSession = () => {
   const queryClient = useQueryClient();
