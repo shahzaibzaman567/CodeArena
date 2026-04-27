@@ -8,24 +8,15 @@ import {
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query'
-import i18next from 'i18next';
-
-i18next.init({
-  lng: 'en',
-  debug: false,
-  initImmediate: false,
-  resources: {
-    en: {
-      translation: {}
-    }
-  }
-});
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
 if (!PUBLISHABLE_KEY) {
-  throw new Error('Add your Clerk Publishable Key to the .env file')
-}
+  // In production builds VITE_CLERK_PUBLISHABLE_KEY must be set in Vercel env vars.
+  // Throwing here crashes the Vercel build — render a clear error UI instead.
+  document.getElementById('root').innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;flex-direction:column;gap:12px"><h2>Configuration Error</h2><p>VITE_CLERK_PUBLISHABLE_KEY is not set. Please add it to your environment variables.</p></div>';
+} else {
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,4 +47,5 @@ try {
   )
 } catch (error) {
   console.error('Failed to render application:', error)
+}
 }
