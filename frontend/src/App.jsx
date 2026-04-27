@@ -29,6 +29,9 @@ function App() {
     const initGlobalListener = async () => {
       try {
         const { token, userId, userName, userImage } = await sessionApi.getStreamToken();
+
+        if (!token || !userId) return; // guard against malformed response
+
         chatClient = StreamChat.getInstance(STREAM_API_KEY);
 
         await chatClient.connectUser(
@@ -50,7 +53,10 @@ function App() {
           }
         });
       } catch (err) {
-        console.error("Global stream listener error:", err);
+        // Non-fatal — community notifications won't work but app continues
+        if (err?.response?.status !== 404) {
+          console.error("Global stream listener error:", err);
+        }
       }
     };
 
