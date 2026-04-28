@@ -26,7 +26,8 @@ function getAllowedOrigins() {
   const base = [
     "http://localhost:5173",
     "http://localhost:3000",
-    "https://code-arena-lake.vercel.app" // ✅ YOUR FRONTEND ADDED
+    "https://code-arena-lake.vercel.app",
+    "code-arena-git-main-shahzaibzaman465s-projects.vercel.app" // ✅ YOUR FRONTEND ADDED
   ];
 
   const extra = process.env.CLIENT_URL
