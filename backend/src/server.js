@@ -35,27 +35,21 @@ const corsOptions = {
     if (!origin) return callback(null, true);
     const allowed = getAllowedOrigins();
     const incoming = normalizeOrigin(origin);
-    console.log(`[CORS] Origin: ${incoming}, Allowed: ${allowed.join(', ')}`);
-    if (allowed.includes(incoming)) {
-      console.log(`[CORS] ✅ Allowed: ${incoming}`);
-      return callback(null, true);
-    }
-    console.log(`[CORS] ❌ Blocked: ${incoming}`);
+    if (allowed.includes(incoming)) return callback(null, true);
+    console.warn(`[CORS] Blocked: ${incoming}`);
     return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
 };
 
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Origin: ${req.headers.origin || 'none'}`);
-  next();
-});
-
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
 app.use(express.json());
-app.use(clerkMiddleware());
+
+// Clerk middleware sirf /api routes pe — poore app pe lagane se
+// Clerk handshake loop hota hai jab / pe koi route nahi hota
+app.use("/api", clerkMiddleware());
 
 /* ---------------------------
    DB CONNECT (SERVERLESS SAFE)
@@ -68,14 +62,13 @@ async function ensureDB() {
   }
 }
 
-app.use(async (req, res, next) => {
-  console.log('[DB MIDDLEWARE] Ensuring connection...');
+// DB middleware sirf /api routes pe
+app.use("/api", async (req, res, next) => {
   try {
     await ensureDB();
-    console.log('[DB MIDDLEWARE] ✅ Connected');
     next();
   } catch (err) {
-    console.error("[DB MIDDLEWARE] ❌ Error:", err.message);
+    console.error("[DB] ❌", err.message);
     res.status(503).json({ message: "DB not available" });
   }
 });
@@ -85,10 +78,7 @@ app.use(async (req, res, next) => {
 --------------------------- */
 app.use("/api/inngest", serve({ client: inngest, functions }));
 app.use("/api/chat", chatRoutes);
-app.use("/api/sessions", (req, res, next) => {
-  console.log(`[SESSION ROUTE] ${req.method} ${req.url}`);
-  next();
-}, sessionRoutes);
+app.use("/api/sessions", sessionRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/execute", executeRoutes);
 app.use("/api/community", communityRoutes);
@@ -96,6 +86,9 @@ app.use("/api/problems", problemRoutes);
 app.use("/api/submissions", submissionRoutes);
 
 app.get("/health", (req, res) => res.json({ message: "Server OK" }));
+
+// Root route — Clerk handshake loop rokne ke liye 200 return karo
+app.get("/", (req, res) => res.json({ message: "CodeArena API" }));
 
 /* ---------------------------
    ERROR HANDLER
