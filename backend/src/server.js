@@ -15,9 +15,7 @@ import submissionRoutes from "./routes/submissionRoutes.js";
 
 const app = express();
 
-/* ---------------------------
-   CORS (PRODUCTION SAFE)
---------------------------- */
+
 function normalizeOrigin(u) {
   return (u || "").trim().replace(/\/$/, "");
 }
@@ -26,20 +24,14 @@ function getAllowedOrigins() {
   const base = [
     "http://localhost:5173",
     "http://localhost:3000",
-    "https://code-arena-lake.vercel.app",
-    "code-arena-git-main-shahzaibzaman465s-projects.vercel.app" // ✅ YOUR FRONTEND ADDED
   ];
 
-  const extra = process.env.CLIENT_URL
-    ? process.env.CLIENT_URL
-        .split(",")
-        .map(normalizeOrigin)
-        .filter(Boolean)
+  const client = process.env.CLIENT_URL
+    ? [normalizeOrigin(process.env.CLIENT_URL)]
     : [];
 
-  return [...new Set([...base, ...extra])];
+  return [...new Set([...base, ...client])];
 }
-
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
@@ -109,10 +101,12 @@ app.use((err, req, res, next) => {
 });
 
 /* ---------------------------
-   LOCAL DEV ONLY LISTEN
-   IMPORTANT: Vercel serverless does not keep websocket servers alive.
+   SERVER INITIALIZATION
+   Modified for deployment: Starts if not on Vercel OR if in DEV.
 --------------------------- */
-if (process.env.NODE_ENV !== "production") {
+const isServerless = !!process.env.VERCEL;
+
+if (!isServerless) {
   const PORT = process.env.PORT || 4000;
   const { createServer } = await import("http");
   const { initializeSocket, setIOInstance } = await import("./lib/socket.js");
@@ -121,11 +115,21 @@ if (process.env.NODE_ENV !== "production") {
   const io = initializeSocket(httpServer);
   setIOInstance(io);
 
-  await ensureDB();
+  // In standard container/VPS, we want to connect DB on startup
+  try {
+    await ensureDB();
+  } catch (err) {
+    console.error("Critical: Initial DB connection failed");
+  }
 
   httpServer.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log("Socket.io ready (DEV only)");
+    console.log(`🚀 Server running on port ${PORT}`);
+    if (process.env.NODE_ENV === "production") {
+      console.log("MODE: Production (Long-lived)");
+    } else {
+      console.log("MODE: Development");
+      console.log("Socket.io ready (DEV mode)");
+    }
   });
 }
 

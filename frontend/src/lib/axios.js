@@ -1,15 +1,16 @@
 import axios from "axios";
 
-// 🔥 DIRECT BACKEND URL (NO ENV)
-const baseURL = "https://code-arena11.vercel.app/api";
+// 🔥 DYNAMIC BACKEND URL
+// In production: uses VITE_API_URL
+// In local dev: uses relative path /api (proxied by Vite to localhost:4000)
+const baseURL = import.meta.env.VITE_API_URL 
+  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, "")}/api`
+  : "/api";
 
 const axiosInstance = axios.create({
   baseURL,
   withCredentials: true,
 });
-
-// Debug (optional)
-console.log("✅ API BASE URL:", baseURL);
 
 // Error handler
 axiosInstance.interceptors.response.use(

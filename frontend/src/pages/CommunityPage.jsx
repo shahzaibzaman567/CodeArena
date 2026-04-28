@@ -41,7 +41,7 @@ function ActiveUsersSidebar({ chatClient }) {
       // Only keep users who Stream considers "online"
       setAllUsers(users.filter((u) => u.online));
     } catch (err) {
-      console.error("queryUsers error:", err);
+      // Ignored
     } finally {
       setLoading(false);
     }
@@ -151,18 +151,14 @@ function CommunityPage() {
         if (client.userID && client.userID !== userId) {
             await client.disconnectUser();
         }
-
-        // Connect user if not already connected as this user
-        if (client.userID !== userId) {
+        
+        // MUST connect before creating channel
+        // Robust check: ensure both userID is set AND user object is present
+        if (!client.user || client.userID !== userId) {
           await client.connectUser({ id: userId, name: userName, image: userImage }, token);
         }
 
         if (isCancelled) return;
-
-        // Wait for connection to be fully established before creating channel
-        if (!client.userID) {
-          throw new Error("connectUser did not establish a connection");
-        }
 
         const communityChannel = client.channel("messaging", "arena-global-community");
         await communityChannel.watch({ presence: true });
@@ -182,7 +178,6 @@ function CommunityPage() {
         setChatClient(client);
         setChannel(communityChannel);
       } catch (error) {
-        console.error("Stream setup error:", error);
         if (!isCancelled) {
           toast.error("Stream Connection Error: " + (error.message || "Please refresh"));
         }

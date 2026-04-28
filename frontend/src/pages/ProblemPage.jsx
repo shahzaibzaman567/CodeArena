@@ -117,21 +117,18 @@ function ProblemPage() {
     if (hasMeaningfulSource && targetIsEmptyOrStarter && oldLang !== newLang) {
       setIsTranslating(true);
       try {
-        console.log(`[Translation] Translating from ${oldLang} to ${newLang}, source length: ${sourceCode.length}`);
         const { translatedCode } = await aiApi.translateCode(
           sourceCode,
           oldLang,
           newLang,
           currentProblem?.title || ""
         );
-        console.log(`[Translation] Success! Translated code length: ${translatedCode?.length || 0}`);
         setCodeByLanguage(prev => ({
           ...prev,
           [newLang]: translatedCode
         }));
         toast.success(`Translated from ${LANGUAGE_CONFIG[oldLang].name} to ${LANGUAGE_CONFIG[newLang].name}`);
       } catch (err) {
-        console.error("[Translation] Auto-translation failed:", err);
         const errorMsg = err.response?.data?.message || err.message || "Unknown error";
         toast.error(`Translation failed: ${errorMsg}`);
         // Fallback to starter code
@@ -240,8 +237,6 @@ function ProblemPage() {
       if (testsPassed) {
         triggerConfetti();
         toast.success("All tests passed! Great job!");
-      } else {
-        toast.error("Tests failed. Check your output!");
       }
     } else {
       toast.error("Code execution failed!");

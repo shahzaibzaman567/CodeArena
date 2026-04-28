@@ -109,7 +109,6 @@ function SessionPage() {
         }, {
           onError: (err) => {
             const errorMsg = err.response?.data?.message || err.message || "Code sync failed";
-            console.error("Code sync error:", errorMsg);
             toast.error(`Failed to sync code: ${errorMsg}`);
           }
         });
@@ -173,7 +172,7 @@ function SessionPage() {
         code,
       }).catch(err => {
         if (!err.message?.includes("tokens are not set")) {
-          console.error("Broadcast failed:", err);
+          // Broadcast failed silently
         }
       });
     }
@@ -258,7 +257,7 @@ function SessionPage() {
           setOutput(event.results);
         }
       } catch (error) {
-        console.error('Error handling stream event:', error);
+        // Ignored
       }
     };
 
@@ -276,7 +275,7 @@ function SessionPage() {
         channel.off("code_run", handleStreamEvent);
         channel.off("run_results", handleStreamEvent);
       } catch (error) {
-        console.error('Error removing stream event listeners:', error);
+        // Ignored
       }
     };
   }, [channel, user?.id, isSyncing]);
@@ -295,7 +294,7 @@ function SessionPage() {
           toast(`${fromUserName} handed control to ${toUserName}.`, { icon: '🕹️' });
         }
       } catch (error) {
-        console.error('Error handling control update:', error);
+        // Ignored
       }
     };
 
@@ -305,7 +304,7 @@ function SessionPage() {
         setControlHandedTo(null);
         toast(`${releasedByUserName} took back control.`, { icon: '🕹️' });
       } catch (error) {
-        console.error('Error handling control release:', error);
+        // Ignored
       }
     };
 
@@ -317,7 +316,7 @@ function SessionPage() {
         offSocket('control:updated', handleControlUpdate);
         offSocket('control:released', handleControlRelease);
       } catch (error) {
-        console.error('Error removing socket listeners:', error);
+        // Ignored
       }
     };
   }, [isSocketConnected, onSocket, offSocket, user?.id]);
@@ -329,7 +328,7 @@ function SessionPage() {
           setEditorMarkers(e.detail.markers);
         }
       } catch (error) {
-        console.error('Error handling markers update:', error);
+        // Ignored
       }
     };
 
@@ -340,7 +339,6 @@ function SessionPage() {
           toast.success("Code applied to editor!");
         }
       } catch (error) {
-        console.error('Error applying code:', error);
         toast.error("Failed to apply code to editor");
       }
     };
@@ -353,7 +351,7 @@ function SessionPage() {
         window.removeEventListener("arena-markers-update", handleMarkersUpdate);
         window.removeEventListener("arena-apply-code", handleApplyCode);
       } catch (error) {
-        console.error('Error removing event listeners:', error);
+        // Ignored
       }
     };
   }, [handleCodeChange]);
@@ -402,7 +400,6 @@ function SessionPage() {
         }));
         toast.success(`Translated from ${LANGUAGE_CONFIG[oldLang].name} to ${LANGUAGE_CONFIG[newLang].name}`);
       } catch (err) {
-        console.error("[Translation] Auto-translation failed:", err);
         const errorMsg = err.response?.data?.message || err.message || "Unknown error";
         toast.error(`Translation failed: ${errorMsg}`);
         setCodeByLanguage(prev => {
@@ -448,7 +445,6 @@ function SessionPage() {
             }).catch(() => {});
         }
     } catch (err) {
-        console.error("Execution failed:", err);
         const errorResult = { 
             success: false, 
             error: err.message || "Execution failed",
@@ -472,7 +468,6 @@ function SessionPage() {
       endSessionMutation.mutate(id, { 
         onSuccess: () => navigate("/dashboard"),
         onError: (err) => {
-          console.error("Failed to end session:", err);
           toast.error("Failed to end session");
         }
       });
@@ -510,7 +505,6 @@ function SessionPage() {
         toast.success("Progress saved successfully!");
       },
       onError: (err) => {
-        console.error("Failed to save progress:", err);
         toast.error("Failed to save progress");
       }
     });

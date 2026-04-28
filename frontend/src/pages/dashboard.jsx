@@ -38,7 +38,6 @@ function DashboardPage() {
         setSearchResults(data.sessions || []);
         setShowSearchResults(true);
       } catch (error) {
-        console.error("Search failed:", error);
         setSearchResults([]);
       } finally {
         setIsSearching(false);
@@ -74,7 +73,6 @@ function DashboardPage() {
           if (sessionId) {
             navigate(`/session/${sessionId}`);
           } else {
-            console.error("Session created but _id missing:", data);
             toast.error("Session created but could not navigate. Please refresh.");
           }
         },

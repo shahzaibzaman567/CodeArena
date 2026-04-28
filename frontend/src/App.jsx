@@ -29,7 +29,6 @@ function App() {
 
     const apiKey = import.meta.env.VITE_STREAM_API_KEY;
     if (!apiKey) {
-      console.error("VITE_STREAM_API_KEY missing");
       return;
     }
 
@@ -55,7 +54,8 @@ function App() {
         }
 
         // MUST connect before creating channel
-        if (!chatClient.userID) {
+        // Robust check: ensure both userID is set AND user object is present
+        if (!chatClient.user || chatClient.userID !== userId) {
           await chatClient.connectUser(
             { id: userId, name: userName, image: userImage },
             token
@@ -83,11 +83,11 @@ function App() {
               );
             }
           } catch (e) {
-            console.error("community handler error:", e);
+            // Ignored
           }
         });
       } catch (err) {
-        console.error("Global stream listener error:", err);
+        // Ignored
       }
     };
 
@@ -96,14 +96,7 @@ function App() {
     return () => {
       cancelled = true;
       initOnceRef.current = false;
-
-      (async () => {
-        try {
-          if (chatClient?.userID) await chatClient.disconnectUser();
-        } catch (e) {
-          console.warn("disconnect warning:", e?.message);
-        }
-      })();
+      // Do NOT disconnect here — CommunityPage reuses this same singleton connection
     };
   }, [isSignedIn, user?.id]);
 

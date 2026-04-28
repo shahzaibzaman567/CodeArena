@@ -91,7 +91,6 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
         if (isCancelled) return;
         setChannel(chatChannel);
       } catch (error) {
-        console.error("Stream init error:", error);
         toast.error("Failed to join video call");
       } finally {
         if (!isCancelled) {
@@ -113,7 +112,7 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
             await videoCall.leave();
           }
         } catch (err) {
-          console.warn("Call leave error:", err.message);
+          // Ignored
         }
 
         try {

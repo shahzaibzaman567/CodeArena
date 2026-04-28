@@ -29,7 +29,14 @@ export const connectDB = async () => {
     cached.conn = await cached.promise;
   } catch (err) {
     cached.promise = null; // allow retry on next invocation
-    console.error("DB connection error:", err.message);
+    
+    if (err.message.includes("timed out") || err.name === "MongoNetworkTimeoutError") {
+      console.error("\n❌ MongoDB Connection Timeout!");
+      console.error("👉 Check if your IP address is whitelisted in MongoDB Atlas (Network Access).");
+      console.error("👉 Check if your DB_URL is correct.\n");
+    } else {
+      console.error("DB connection error:", err.message);
+    }
     throw err;
   }
 
