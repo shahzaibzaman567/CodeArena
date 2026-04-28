@@ -159,6 +159,11 @@ function CommunityPage() {
 
         if (isCancelled) return;
 
+        // Wait for connection to be fully established before creating channel
+        if (!client.userID) {
+          throw new Error("connectUser did not establish a connection");
+        }
+
         const communityChannel = client.channel("messaging", "arena-global-community");
         await communityChannel.watch({ presence: true });
 

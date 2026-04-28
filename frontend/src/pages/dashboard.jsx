@@ -70,7 +70,13 @@ function DashboardPage() {
         onSuccess: (data) => {
           setShowCreateModal(false);
           setRoomConfig({ problem: "", difficulty: "", description: "", maxParticipants: 1 });
-          navigate(`/session/${data.session._id}`);
+          const sessionId = data?.session?._id || data?._id;
+          if (sessionId) {
+            navigate(`/session/${sessionId}`);
+          } else {
+            console.error("Session created but _id missing:", data);
+            toast.error("Session created but could not navigate. Please refresh.");
+          }
         },
       }
     );
