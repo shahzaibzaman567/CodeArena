@@ -15,46 +15,45 @@ import submissionRoutes from "./routes/submissionRoutes.js";
 
 const app = express();
 
-/* ─────────────────────────────
-   CORS FIX (IMPORTANT)
-──────────────────────────── */
+/* ---------------------------
+   CORS (PRODUCTION SAFE)
+--------------------------- */
+function normalizeOrigin(u) {
+  return (u || "").trim().replace(/\/$/, "");
+}
+
 function getAllowedOrigins() {
-  return [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    ...(process.env.CLIENT_URL
-      ? process.env.CLIENT_URL.split(",").map((o) => o.trim())
-      : []),
-  ];
+  const base = ["http://localhost:5173", "http://localhost:3000"];
+  const extra = process.env.CLIENT_URL
+    ? process.env.CLIENT_URL.split(",").map(normalizeOrigin).filter(Boolean)
+    : [];
+  return [...new Set([...base, ...extra])];
 }
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-
+    if (!origin) return callback(null, true); // server-to-server, curl, etc.
     const allowed = getAllowedOrigins();
-    if (allowed.includes(origin)) {
-      return callback(null, true);
-    }
+    const incoming = normalizeOrigin(origin);
 
-    console.log("❌ CORS blocked:", origin);
-    return callback(null, false);
+    if (allowed.includes(incoming)) return callback(null, true);
+
+    console.log("CORS blocked:", incoming);
+    return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
 };
 
-/* IMPORTANT: apply cors properly */
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
 app.use(express.json());
 app.use(clerkMiddleware());
 
-/* ─────────────────────────────
-   DB CONNECT (SAFE FOR VERCEL)
-──────────────────────────── */
+/* ---------------------------
+   DB CONNECT (SERVERLESS SAFE)
+--------------------------- */
 let isConnected = false;
-
 async function ensureDB() {
   if (!isConnected) {
     await connectDB();
@@ -67,14 +66,14 @@ app.use(async (req, res, next) => {
     await ensureDB();
     next();
   } catch (err) {
-    console.log("DB Error:", err.message);
+    console.error("DB Error:", err.message);
     res.status(503).json({ message: "DB not available" });
   }
 });
 
-/* ─────────────────────────────
+/* ---------------------------
    ROUTES
-──────────────────────────── */
+--------------------------- */
 app.use("/api/inngest", serve({ client: inngest, functions }));
 app.use("/api/chat", chatRoutes);
 app.use("/api/sessions", sessionRoutes);
@@ -84,37 +83,34 @@ app.use("/api/community", communityRoutes);
 app.use("/api/problems", problemRoutes);
 app.use("/api/submissions", submissionRoutes);
 
-/* ─────────────────────────────
-   HEALTH CHECK
-──────────────────────────── */
-app.get("/health", (req, res) => {
-  res.json({ message: "Server OK 🚀" });
-});
+app.get("/health", (req, res) => res.json({ message: "Server OK" }));
 
-/* ─────────────────────────────
+/* ---------------------------
    ERROR HANDLER
-──────────────────────────── */
+--------------------------- */
 app.use((err, req, res, next) => {
   console.error("Server Error:", err.message);
-  res.status(500).json({
-    error: err.message || "Internal Server Error",
-  });
+  res.status(500).json({ error: err.message || "Internal Server Error" });
 });
 
-/* ─────────────────────────────
-   VERCEL EXPORT ONLY (NO LISTEN)
-──────────────────────────── */
+/* ---------------------------
+   LOCAL DEV ONLY LISTEN
+   IMPORTANT: Vercel serverless does not keep websocket servers alive.
+--------------------------- */
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 4000;
   const { createServer } = await import("http");
   const { initializeSocket, setIOInstance } = await import("./lib/socket.js");
+
   const httpServer = createServer(app);
   const io = initializeSocket(httpServer);
   setIOInstance(io);
+
   await ensureDB();
+
   httpServer.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`🔌 Socket.io ready`);
+    console.log(`Server running on port ${PORT}`);
+    console.log("Socket.io ready (DEV only)");
   });
 }
 

@@ -1,28 +1,29 @@
 import axios from "axios";
 
-// Get backend URL from environment
-const configuredApiUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
+/**
+ * Vercel fix:
+ * VITE_API_URL MUST be your BACKEND vercel domain, not frontend domain.
+ * Example:
+ * VITE_API_URL=https://code-arena-api.vercel.app
+ */
+const configuredApiUrl = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
-// Build base URL safely
-const baseURL = configuredApiUrl
-  ? `${configuredApiUrl}/api`
-  : "/api";
+// final baseURL => https://BACKEND.vercel.app/api
+const baseURL = configuredApiUrl ? `${configuredApiUrl}/api` : "/api";
 
-// Create single axios instance
 const axiosInstance = axios.create({
   baseURL,
   withCredentials: true,
 });
 
-// Global response interceptor (prevents React crash #31)
+// Normalize error shape so UI doesn't crash
 axiosInstance.interceptors.response.use(
-  (response) => response,
+  (res) => res,
   (error) => {
     const data = error?.response?.data;
 
     if (data && typeof data === "object" && !Array.isArray(data)) {
       const nested = data.error;
-
       const message =
         typeof data.message === "string"
           ? data.message
@@ -34,7 +35,7 @@ axiosInstance.interceptors.response.use(
           ? data.error
           : "Something went wrong";
 
-      error.response.data = { message };
+      if (error.response) error.response.data = { message };
     }
 
     return Promise.reject(error);

@@ -1,104 +1,157 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from "react";
 import { useUser } from "@clerk/clerk-react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom"
-import HomePage from './pages/home.jsx';
-import ProblemPage from './pages/ProblemPage.jsx';
-import { Toaster } from "react-hot-toast";
-import DashboardPage from "./pages/dashboard.jsx"
-import ProblemsPage from './pages/problemspage.jsx';
-import SessionPage from './pages/SessionPage.jsx';
-import FloatingAIWidget from './components/FloatingAIWidget.jsx';
-import CommunityPage from './pages/CommunityPage.jsx';
-import DemoPage from './pages/DemoPage.jsx';
-import { StreamChat } from 'stream-chat';
-import { sessionApi } from './api/sessions.js';
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
-const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY;
+import HomePage from "./pages/home.jsx";
+import ProblemPage from "./pages/ProblemPage.jsx";
+import DashboardPage from "./pages/dashboard.jsx";
+import ProblemsPage from "./pages/problemspage.jsx";
+import SessionPage from "./pages/SessionPage.jsx";
+import CommunityPage from "./pages/CommunityPage.jsx";
+import DemoPage from "./pages/DemoPage.jsx";
+
+import FloatingAIWidget from "./components/FloatingAIWidget.jsx";
+import { Toaster } from "react-hot-toast";
+
+import { StreamChat } from "stream-chat";
+import { sessionApi } from "./api/sessions.js";
 
 function App() {
   const { isSignedIn, isLoaded, user } = useUser();
   const location = useLocation();
   const [hasNewCommunityMessage, setHasNewCommunityMessage] = useState(false);
 
+  // StrictMode dev double-run guard
+  const initOnceRef = useRef(false);
+
   useEffect(() => {
     if (!isSignedIn || !user) return;
 
+    const apiKey = import.meta.env.VITE_STREAM_API_KEY;
+    if (!apiKey) {
+      console.error("VITE_STREAM_API_KEY missing");
+      return;
+    }
+
+    let cancelled = false;
     let chatClient = null;
     let channel = null;
 
     const initGlobalListener = async () => {
+      if (initOnceRef.current) return;
+      initOnceRef.current = true;
+
       try {
-        const { token, userId, userName, userImage } = await sessionApi.getStreamToken();
+        const { token, userId, userName, userImage } =
+          await sessionApi.getStreamToken();
 
-        if (!token || !userId) return; // guard against malformed response
+        if (!token || !userId) return;
 
-        chatClient = StreamChat.getInstance(STREAM_API_KEY);
+        chatClient = StreamChat.getInstance(apiKey);
 
-        await chatClient.connectUser(
-          { id: userId, name: userName, image: userImage },
-          token
-        );
+        // Clean state (important for dev reload + strict mode)
+        if (chatClient.userID && chatClient.userID !== userId) {
+          await chatClient.disconnectUser();
+        }
 
-        channel = chatClient.channel('messaging', 'arena-global-community');
+        // MUST connect before creating channel
+        if (!chatClient.userID) {
+          await chatClient.connectUser(
+            { id: userId, name: userName, image: userImage },
+            token
+          );
+        }
+
+        if (cancelled) return;
+
+        channel = chatClient.channel("messaging", "arena-global-community");
         await channel.watch();
 
-        channel.on('message.new', event => {
+        channel.on("message.new", (event) => {
+          if (cancelled) return;
+
           try {
-            if (window.location.pathname !== '/community' && event.user.id !== userId) {
+            if (
+              window.location.pathname !== "/community" &&
+              event?.user?.id !== userId
+            ) {
               setHasNewCommunityMessage(true);
-              window.dispatchEvent(new CustomEvent('arena-community-notify', { detail: { hasNew: true } }));
+              window.dispatchEvent(
+                new CustomEvent("arena-community-notify", {
+                  detail: { hasNew: true },
+                })
+              );
             }
-          } catch (error) {
-            console.error('Error handling community message:', error);
+          } catch (e) {
+            console.error("community handler error:", e);
           }
         });
       } catch (err) {
-        // Non-fatal — community notifications won't work but app continues
-        if (err?.response?.status !== 404) {
-          console.error("Global stream listener error:", err);
-        }
+        console.error("Global stream listener error:", err);
       }
     };
 
     initGlobalListener();
 
     return () => {
-      try {
-        if (chatClient) chatClient.disconnectUser();
-      } catch (error) {
-        console.error('Error disconnecting chat client:', error);
-      }
+      cancelled = true;
+      initOnceRef.current = false;
+
+      (async () => {
+        try {
+          if (chatClient?.userID) await chatClient.disconnectUser();
+        } catch (e) {
+          console.warn("disconnect warning:", e?.message);
+        }
+      })();
     };
   }, [isSignedIn, user?.id]);
 
   useEffect(() => {
-    try {
-      if (location.pathname === '/community') {
-        setHasNewCommunityMessage(false);
-        window.dispatchEvent(new CustomEvent('arena-community-notify', { detail: { hasNew: false } }));
-      }
-    } catch (error) {
-      console.error('Error handling location change:', error);
+    if (location.pathname === "/community") {
+      setHasNewCommunityMessage(false);
+      window.dispatchEvent(
+        new CustomEvent("arena-community-notify", { detail: { hasNew: false } })
+      );
     }
   }, [location.pathname]);
 
-  if (!isLoaded) return null
+  if (!isLoaded) return null;
 
   return (
     <>
       <Routes>
-        <Route path="/" element={!isSignedIn ? <HomePage /> : <Navigate to={"/dashboard"} />}></Route>
-        <Route path="/dashboard" element={isSignedIn ? <DashboardPage /> : <Navigate to={"/"} />}></Route>
-        <Route path="/problems" element={isSignedIn ? <ProblemsPage /> : <Navigate to={"/"} />} />
-        <Route path="/community" element={isSignedIn ? <CommunityPage /> : <Navigate to={"/"} />} />
-        <Route path="/problem/:id" element={isSignedIn ? <ProblemPage /> : <Navigate to={"/"} />} />
+        <Route
+          path="/"
+          element={!isSignedIn ? <HomePage /> : <Navigate to={"/dashboard"} />}
+        />
+        <Route
+          path="/dashboard"
+          element={isSignedIn ? <DashboardPage /> : <Navigate to={"/"} />}
+        />
+        <Route
+          path="/problems"
+          element={isSignedIn ? <ProblemsPage /> : <Navigate to={"/"} />}
+        />
+        <Route
+          path="/community"
+          element={isSignedIn ? <CommunityPage /> : <Navigate to={"/"} />}
+        />
+        <Route
+          path="/problem/:id"
+          element={isSignedIn ? <ProblemPage /> : <Navigate to={"/"} />}
+        />
         <Route path="/demo" element={<DemoPage />} />
-        <Route path="/session/:id" element={isSignedIn ? <SessionPage /> : <Navigate to={"/"} />} />
+        <Route
+          path="/session/:id"
+          element={isSignedIn ? <SessionPage /> : <Navigate to={"/"} />}
+        />
       </Routes>
-      <Toaster position='top-right' toastOptions={{ duration: 3000 }} />
+
+      <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
       {isSignedIn && <FloatingAIWidget />}
     </>
-  )
+  );
 }
 
-export default App
+export default App;
