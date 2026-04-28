@@ -32,17 +32,24 @@ function getAllowedOrigins() {
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // server-to-server, curl, etc.
+    if (!origin) return callback(null, true);
     const allowed = getAllowedOrigins();
     const incoming = normalizeOrigin(origin);
-
-    if (allowed.includes(incoming)) return callback(null, true);
-
-    console.log("CORS blocked:", incoming);
+    console.log(`[CORS] Origin: ${incoming}, Allowed: ${allowed.join(', ')}`);
+    if (allowed.includes(incoming)) {
+      console.log(`[CORS] ✅ Allowed: ${incoming}`);
+      return callback(null, true);
+    }
+    console.log(`[CORS] ❌ Blocked: ${incoming}`);
     return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
 };
+
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Origin: ${req.headers.origin || 'none'}`);
+  next();
+});
 
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
@@ -62,11 +69,13 @@ async function ensureDB() {
 }
 
 app.use(async (req, res, next) => {
+  console.log('[DB MIDDLEWARE] Ensuring connection...');
   try {
     await ensureDB();
+    console.log('[DB MIDDLEWARE] ✅ Connected');
     next();
   } catch (err) {
-    console.error("DB Error:", err.message);
+    console.error("[DB MIDDLEWARE] ❌ Error:", err.message);
     res.status(503).json({ message: "DB not available" });
   }
 });
@@ -76,7 +85,10 @@ app.use(async (req, res, next) => {
 --------------------------- */
 app.use("/api/inngest", serve({ client: inngest, functions }));
 app.use("/api/chat", chatRoutes);
-app.use("/api/sessions", sessionRoutes);
+app.use("/api/sessions", (req, res, next) => {
+  console.log(`[SESSION ROUTE] ${req.method} ${req.url}`);
+  next();
+}, sessionRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/execute", executeRoutes);
 app.use("/api/community", communityRoutes);
@@ -89,7 +101,7 @@ app.get("/health", (req, res) => res.json({ message: "Server OK" }));
    ERROR HANDLER
 --------------------------- */
 app.use((err, req, res, next) => {
-  console.error("Server Error:", err.message);
+  console.error(`[ERROR HANDLER] ${req.method} ${req.url} - Error:`, err.message);
   res.status(500).json({ error: err.message || "Internal Server Error" });
 });
 
