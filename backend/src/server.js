@@ -23,10 +23,19 @@ function normalizeOrigin(u) {
 }
 
 function getAllowedOrigins() {
-  const base = ["http://localhost:5173", "http://localhost:3000"];
+  const base = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://code-arena-lake.vercel.app" // ✅ YOUR FRONTEND ADDED
+  ];
+
   const extra = process.env.CLIENT_URL
-    ? process.env.CLIENT_URL.split(",").map(normalizeOrigin).filter(Boolean)
+    ? process.env.CLIENT_URL
+        .split(",")
+        .map(normalizeOrigin)
+        .filter(Boolean)
     : [];
+
   return [...new Set([...base, ...extra])];
 }
 
