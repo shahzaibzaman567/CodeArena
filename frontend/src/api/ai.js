@@ -1,7 +1,7 @@
 import axiosInstance from "../lib/axios";
 
 export const aiApi = {
-  // Get code suggestions and hints
+  // Get code suggestions and hints  //
   getCodeSuggestions: async (code, problemDescription, language, hint) => {
     const response = await axiosInstance.post("/ai/suggestions", {
       code,
