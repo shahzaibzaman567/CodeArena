@@ -24,6 +24,7 @@ function getAllowedOrigins() {
   const base = [
     "http://localhost:5173",
     "http://localhost:3000",
+    "https://code-arena-lake.vercel.app",
   ];
 
   const client = process.env.CLIENT_URL

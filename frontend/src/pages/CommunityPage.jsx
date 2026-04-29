@@ -155,7 +155,10 @@ function CommunityPage() {
         // MUST connect before creating channel
         // Robust check: ensure both userID is set AND user object is present
         if (!client.user || client.userID !== userId) {
-          await client.connectUser({ id: userId, name: userName, image: userImage }, token);
+          if (!userId) {
+            throw new Error("Stream Connection Error: User ID is missing.");
+          }
+          await client.connectUser({ id: userId, name: userName || userId, image: userImage }, token);
         }
 
         if (isCancelled) return;

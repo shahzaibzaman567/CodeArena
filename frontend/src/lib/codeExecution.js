@@ -1,5 +1,5 @@
-const baseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
-const CODE_EXECUTION_API = baseUrl ? `${baseUrl}/api/execute` : '/api/execute';
+// 🔥 MANUAL BACKEND URL
+const CODE_EXECUTION_API = "https://code-arena11.vercel.app/api/execute";
 
 const SUPPORTED_LANGUAGES = [
   "javascript",

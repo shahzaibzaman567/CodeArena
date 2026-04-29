@@ -56,8 +56,11 @@ function App() {
         // MUST connect before creating channel
         // Robust check: ensure both userID is set AND user object is present
         if (!chatClient.user || chatClient.userID !== userId) {
+          if (!userId) {
+            throw new Error("Stream Connection Error: User ID not provided by backend.");
+          }
           await chatClient.connectUser(
-            { id: userId, name: userName, image: userImage },
+            { id: userId, name: userName || userId, image: userImage },
             token
           );
         }
