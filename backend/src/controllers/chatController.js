@@ -4,7 +4,8 @@ const COMMUNITY_CHANNEL_ID = "arena-global-community";
 
 export const getStreamToken = async (req, res) => {
   try {
-    const userId = req.user.clerkId;
+    // 🛡️ Senior Dev Fix: Robust ID retrieval from both auth and user doc
+    const userId = req.user.clerkId || req.auth?.userId;
     const chatClient = getChatClient();
     const streamClient = getStreamClient();
 

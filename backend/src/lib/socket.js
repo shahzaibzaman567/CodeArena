@@ -1,7 +1,7 @@
 import { Server } from 'socket.io';
 
 function getSocketAllowedOrigins() {
-  const base = ['http://localhost:5173', 'http://localhost:3000'];
+  const base = ['http://localhost:5173', 'http://localhost:3000', 'https://code-arena-lake.vercel.app'];
   const clientUrl = process.env.CLIENT_URL;
   if (!clientUrl) return base;
   const extra = clientUrl.split(',').map(o => o.trim()).filter(Boolean);

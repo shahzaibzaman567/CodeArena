@@ -103,7 +103,8 @@ export async function getActiveSession(_, res) {
             .limit(20);
         res.status(200).json({ sessions });
     } catch (err) {
-        res.json({ message: "Internal Server Error", err }).status(500);
+        console.error("Error in getActiveSession:", err.message);
+        res.status(500).json({ message: "Internal Server Error", error: err.message });
     }
 }
 
