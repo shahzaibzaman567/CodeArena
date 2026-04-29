@@ -28,9 +28,23 @@ if (process.env.CLIENT_URL) {
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
+    // 1. Allow internal requests (no origin)
+    if (!origin) return callback(null, true);
+
+    const normalized = origin.trim().replace(/\/$/, "");
+
+    // 2. Allow explicitly listed origins
+    if (allowedOrigins.includes(normalized)) {
       return callback(null, true);
     }
+
+    // 3. 🛡️ Senior Dev: Allow Vercel preview/deployment URLs dynamically
+    if (normalized.endsWith(".vercel.app")) {
+      return callback(null, true);
+    }
+
+    // 4. Log and block others
+    console.warn(`[CORS REJECTED]: ${origin}`);
     return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
