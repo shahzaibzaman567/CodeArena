@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useUser } from "@clerk/clerk-react";
+import { useUser, useAuth } from "@clerk/clerk-react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
 import HomePage from "./pages/home.jsx";
@@ -18,8 +18,24 @@ import { sessionApi } from "./api/sessions.js";
 
 function App() {
   const { isSignedIn, isLoaded, user } = useUser();
+  const { getToken } = useAuth();
   const location = useLocation();
   const [hasNewCommunityMessage, setHasNewCommunityMessage] = useState(false);
+
+  // 🔥 Sync Clerk Token to Axios window var (Cross-Domain Fix)
+  useEffect(() => {
+    const syncToken = async () => {
+      if (isSignedIn) {
+        const token = await getToken();
+        window.__clerk_token = token;
+      } else {
+        window.__clerk_token = null;
+      }
+    };
+    syncToken();
+    const interval = setInterval(syncToken, 1000 * 50); // Refresh every 50s
+    return () => clearInterval(interval);
+  }, [isSignedIn, getToken]);
 
   // StrictMode dev double-run guard
   const initOnceRef = useRef(false);

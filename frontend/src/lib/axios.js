@@ -8,6 +8,15 @@ const axiosInstance = axios.create({
   withCredentials: true,
 });
 
+// 🔥 Cross-Domain Auth Fix: Allow manual token injection
+axiosInstance.interceptors.request.use(async (config) => {
+  const token = typeof window !== "undefined" ? window.__clerk_token : null;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // Error handler
 axiosInstance.interceptors.response.use(
   (res) => res,
