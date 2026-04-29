@@ -69,11 +69,16 @@ function DashboardPage() {
         onSuccess: (data) => {
           setShowCreateModal(false);
           setRoomConfig({ problem: "", difficulty: "", description: "", maxParticipants: 1 });
-          const sessionId = data?.session?._id || data?._id;
+          
+          // 🛡️ Senior Dev: Robust ID detection (handles various backend response shapes)
+          const sessionId = data?.session?._id || data?.session?.id || data?._id || data?.id;
+          
           if (sessionId) {
             navigate(`/session/${sessionId}`);
           } else {
-            toast.error("Session created but could not navigate. Please refresh.");
+             // Fallback: If for some reason the ID isn't found, don't just error out
+            toast.success("Session ready! Please join from the list.");
+            if (typeof refetch === 'function') refetch();
           }
         },
       }
