@@ -53,9 +53,23 @@ router.post("/", async (req, res) => {
       });
     }
 
+    // 🛡️ Senior Dev: Java-specific handling for Judge0
+    // Judge0 for Java expects the file/class to be named 'Main' and usually fails with package declarations
+    let finalCode = code;
+    if (language === "java") {
+      // 1. Strip package declaration if exists
+      finalCode = finalCode.replace(/^\s*package\s+[\w.]+;\s*/m, "");
+      
+      // 2. Ensure main class is 'Main'
+      if (!finalCode.includes("class Main")) {
+        // Replace the first class definition with 'class Main'
+        finalCode = finalCode.replace(/\bclass\s+([a-zA-Z0-9_$]+)/, "class Main");
+      }
+    }
+
     // Prepare Judge0 submission payload
     const submission = {
-      source_code: code,
+      source_code: finalCode,
       language_id: languageId,
       stdin: stdin,
       cpu_time_limit: 3,        // 3 seconds

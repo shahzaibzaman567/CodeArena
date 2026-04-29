@@ -23,8 +23,8 @@ import {
   UsersIcon, 
   ArrowRightIcon 
 } from "lucide-react";
-import CodeEditorPanel from "../components/codeEditor.jsx";
-import OutputPanel from "../components/outputPanel.jsx";
+import CodeEditorPanel from "../components/CodeEditor.jsx";
+import OutputPanel from "../components/OutputPanel.jsx";
 import { debounce } from "lodash-es";
 
 import useStreamClient from "../hooks/useStreamClient.js";

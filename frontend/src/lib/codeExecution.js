@@ -1,5 +1,6 @@
-// 🔥 MANUAL BACKEND URL
-const CODE_EXECUTION_API = "https://code-arena11.vercel.app/api/execute";
+import axiosInstance from "./axios";
+
+const CODE_EXECUTION_PATH = "/execute";
 
 const SUPPORTED_LANGUAGES = [
   "javascript",
@@ -27,27 +28,14 @@ export async function executeCode(language, code) {
       };
     }
 
-    const response = await fetch(CODE_EXECUTION_API, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        language,
-        code,
-        stdin: "",
-        args: [],
-      }),
+    const response = await axiosInstance.post(CODE_EXECUTION_PATH, {
+      language,
+      code,
+      stdin: "",
+      args: [],
     });
 
-    const data = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      return {
-        success: false,
-        error: data?.error || data?.message || `HTTP error! status: ${response.status}`,
-      };
-    }
+    const data = response.data;
 
     return {
       success: Boolean(data?.success),
@@ -57,9 +45,10 @@ export async function executeCode(language, code) {
       memory: data?.memory,
     };
   } catch (error) {
+    console.error("Code execution error:", error);
     return {
       success: false,
-      error: `Failed to execute code: ${error.message}`,
+      error: error.response?.data?.message || error.message || "Failed to execute code",
     };
   }
 }

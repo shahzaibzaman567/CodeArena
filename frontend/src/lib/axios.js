@@ -1,7 +1,5 @@
 import axios from "axios";
-
-// 🔥 MANUAL BACKEND URL (User request to bypass .env issues)
-const baseURL = "https://code-arena11.vercel.app/api";
+const baseURL = import.meta.env.VITE_API_URL || "/api";
 
 const axiosInstance = axios.create({
   baseURL,

@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { useUser, useAuth } from "@clerk/clerk-react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
-import HomePage from "./pages/home.jsx";
+import HomePage from "./pages/HomePage.jsx";
 import ProblemPage from "./pages/ProblemPage.jsx";
-import DashboardPage from "./pages/dashboard.jsx";
-import ProblemsPage from "./pages/problemspage.jsx";
+import DashboardPage from "./pages/DashboardPage.jsx";
+import ProblemsPage from "./pages/ProblemsPage.jsx";
 import SessionPage from "./pages/SessionPage.jsx";
 import CommunityPage from "./pages/CommunityPage.jsx";
 import DemoPage from "./pages/DemoPage.jsx";
