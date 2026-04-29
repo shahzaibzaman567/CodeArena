@@ -2,17 +2,31 @@
   "name": "codearena",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "workspaces": [
-    "frontend",
-    "backend"
+    "frontend"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev --workspace=frontend\" \"npm run dev --workspace=backend\"",
+    "dev": "concurrently \"npm run dev --workspace=frontend\" \"nodemon api/index.js\"",
     "build": "npm run build --workspace=frontend",
-    "start": "npm start --workspace=backend",
+    "start": "node api/index.js",
     "install:all": "npm install"
   },
+  "dependencies": {
+    "@clerk/express": "^1.7.77",
+    "@google/generative-ai": "^0.24.1",
+    "@stream-io/node-sdk": "^0.7.12",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.0",
+    "express": "^5.2.1",
+    "inngest": "^3.54.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.1.5",
+    "socket.io": "^4.8.3",
+    "stream-chat": "^9.41.0"
+  },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.1.11"
   }
 }

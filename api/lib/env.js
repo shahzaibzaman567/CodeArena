@@ -3,7 +3,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-dotenv.config({ path: path.resolve(__dirname, "../../../.env"), quiet: true });
+// Load .env in development
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config({ path: path.resolve(__dirname, "../../.env"), quiet: true });
+}
 
 export let ENV = {
     port: process.env.PORT,
