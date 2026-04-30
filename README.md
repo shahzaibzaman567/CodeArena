@@ -1,30 +1,40 @@
-🚀 CodeArena | Developer Platform
+CodeArena | Developer Platform
 
-CodeArena ek powerful developer ecosystem hai jo coding, collaboration, aur AI-driven tools ko ek hi jagah lata hai.
+CodeArena is a high-performance developer ecosystem built to streamline coding, enhance collaboration, and provide AI-powered development tools in a single platform.
+
 🌐 View Live Demo
+
 ✨ Key Features
-🎮 Live Coding Arena:
-Real-time code execution environment.
-Multiple programming languages ka support (powered by Piston).
-👥 Community Hub:
-Developers ke liye dedicated space jahan log ek doosre se baat kar sakte hain.
-Knowledge sharing aur networking ke liye behtareen platform.
-🔄 Smart Code Converter:
-JavaScript code ko kisi bhi doosri language mein foran convert karein.
-Problem-solving page jahan code transformation asaan hai.
-🤖 AI Assistance:
-Smart AI assistant jo code likhne aur samajhne mein madad karta hai.
-Complex bugs ko solve karne ke liye instant support.
+🎮 Live Coding Arena
+
+An interactive environment for real-time code execution with support for multiple programming languages using the Piston engine.
+
+👥 Community Hub
+
+A dedicated space for developers to connect, share knowledge, and collaborate effectively.
+
+🔄 Smart Code Converter
+
+A powerful tool to transform code logic, enabling instant conversion of JavaScript into multiple programming languages.
+
+🤖 AI Assistance
+
+An integrated AI assistant that helps write, debug, and optimize complex code with ease.
+
 🛠️ Tech Stack
-Frontend: React, TanStack (Query), DaisyUI, JavaScript
+
+Frontend: React, TanStack Query, DaisyUI, JavaScript
 Backend: Node.js, Express.js
 Database: MongoDB
-APIs & Services:
-Clerk: Secure User Authentication.
-Piston: High-performance Code Execution.
-Stream: Real-time Chat & Interaction.
-Inngest: Reliability for Background Workflows.
+
+Services & APIs:
+
+Clerk (Authentication & User Management)
+Piston (Code Execution Engine)
+Stream (Real-time Messaging)
+Inngest (Event-driven Workflows)
 👤 Author
-Name: Shahzaib Zaman
-Role: Full Stack Developer
-Project: CodeArena Creator
+
+Shahzaib Zaman
+Full Stack Developer
+Creator of CodeArena
