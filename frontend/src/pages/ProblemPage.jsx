@@ -64,11 +64,20 @@ function ProblemPage() {
     if (currentProblem) {
       const initialMap = {};
       const languages = ["javascript", "python", "java", "cpp", "csharp"];
+      let firstLangWithCode = null;
+      
       languages.forEach(lang => {
-        initialMap[lang] = currentProblem.starterCode?.[lang] || "";
+        const langCode = currentProblem.starterCode?.[lang] || "";
+        initialMap[lang] = langCode;
+        if (langCode && !firstLangWithCode) {
+          firstLangWithCode = lang;
+        }
       });
 
       setCodeByLanguage(initialMap);
+      if (firstLangWithCode) {
+        setSelectedLanguage(firstLangWithCode);
+      }
       setOutput(null);
     }
   }, [currentProblem]);

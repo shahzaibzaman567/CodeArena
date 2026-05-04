@@ -35,8 +35,10 @@ export async function createSession(req, res) {
             maxParticipants: maxParticipants || 1,
             invitedUsers
         });
-        //create stream video call — upsert user first so Stream never rejects with "user not found"
+        //create stream video call — upsert user in BOTH Stream Chat AND Stream Video first
+        // (Chat and Video are separate SDKs with separate user registries)
         try {
+            // 1. Upsert in Stream Chat
             await getChatClient().upsertUser({
                 id: clerkId,
                 name: req.user.name || clerkId,
@@ -44,7 +46,19 @@ export async function createSession(req, res) {
                 role: "user",
             });
         } catch (upsertErr) {
-            console.warn("Stream user upsert warning (non-fatal):", upsertErr.message);
+            console.warn("Stream Chat user upsert warning (non-fatal):", upsertErr.message);
+        }
+
+        try {
+            // 2. Upsert in Stream Video (separate registry from Chat)
+            await getStreamClient().upsertUsers([{
+                id: clerkId,
+                name: req.user.name || clerkId,
+                image: req.user.profileImage || "",
+                role: "user",
+            }]);
+        } catch (videoUpsertErr) {
+            console.warn("Stream Video user upsert warning (non-fatal):", videoUpsertErr.message);
         }
 
         const call = getStreamClient().video.call("default", callId);

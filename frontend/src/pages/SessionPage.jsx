@@ -366,11 +366,7 @@ function SessionPage() {
 
   const handleLanguageChange = async (e) => {
     const newLang = e.target.value;
-    const oldLang = selectedLanguage;
-    const sourceCode = codeByLanguage[oldLang] || "";
-    const targetExistingCode = codeByLanguage[newLang] || "";
     const starterForTarget = problemData?.starterCode?.[newLang] || "";
-    const starterForSource = problemData?.starterCode?.[oldLang] || "";
 
     if (channel && chatClient?.userID) {
       channel.sendEvent({
@@ -382,43 +378,12 @@ function SessionPage() {
     setSelectedLanguage(newLang);
     setOutput(null);
 
-    const hasMeaningfulSource = sourceCode.trim().length > 0 && sourceCode.trim() !== starterForSource.trim();
-    const targetIsEmptyOrStarter = !targetExistingCode.trim() || targetExistingCode.trim() === starterForTarget.trim();
-
-    if (hasMeaningfulSource && targetIsEmptyOrStarter && oldLang !== newLang) {
-      setIsTranslating(true);
-      try {
-        const { translatedCode } = await aiApi.translateCode(
-          sourceCode,
-          oldLang,
-          newLang,
-          session?.problem || problemData?.description || ""
-        );
-        setCodeByLanguage(prev => ({
-          ...prev,
-          [newLang]: translatedCode
-        }));
-        toast.success(`Translated from ${LANGUAGE_CONFIG[oldLang].name} to ${LANGUAGE_CONFIG[newLang].name}`);
-      } catch (err) {
-        const errorMsg = err.response?.data?.message || err.message || "Unknown error";
-        toast.error(`Translation failed: ${errorMsg}`);
-        setCodeByLanguage(prev => {
-          if (!prev[newLang] && starterForTarget) {
-            return { ...prev, [newLang]: starterForTarget };
-          }
-          return prev;
-        });
-      } finally {
-        setIsTranslating(false);
+    setCodeByLanguage(prev => {
+      if (!prev[newLang] && starterForTarget) {
+        return { ...prev, [newLang]: starterForTarget };
       }
-    } else {
-      setCodeByLanguage(prev => {
-        if (!prev[newLang] && starterForTarget) {
-          return { ...prev, [newLang]: starterForTarget };
-        }
-        return prev;
-      });
-    }
+      return prev;
+    });
   };
 
   const handleRunCode = async () => {

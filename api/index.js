@@ -96,3 +96,11 @@ app.use((err, req, res, next) => {
 
 // 🛡️ Senior Dev: Export for Vercel Serverless
 export default app;
+
+// Start server locally
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 4000;
+  app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
+}
