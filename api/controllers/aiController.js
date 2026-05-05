@@ -17,38 +17,47 @@ export async function getCodeSuggestions(req, res) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Models ordered by preference
+    // Models ordered by preference — stable models first, preview as fallback
     const modelsToTry = [
-      "gemini-1.5-pro",
-      "gemini-1.5-flash"
+      "gemini-2.0-flash",
+      "gemini-2.0-flash-lite",
+      "gemini-2.5-flash",
+      "gemini-pro-latest"
     ];
     
     let lastError = null;
     let responseText = "";
 
-    const systemPrompt = `You are "Arena AI", the expert coding assistant for CodeArena. 
+    const systemInstruction = `You are "Arena AI", the expert coding assistant for CodeArena. 
     Help the user with coding problems, debugging, or explaining features.
     Respond ONLY in JSON format: { "suggestion": "...", "hint": "...", "error": "...", "improvement": "..." }`;
 
-    const userPrompt = `
-Problem Context: ${problemDescription || "General"}
+    const userPrompt = `Problem Context: ${problemDescription || "General"}
 Language: ${language || "JavaScript"}
 Current Code:
 \`\`\`
 ${code || "// No code provided"}
 \`\`\`
-User Question/Hint Request: ${hint || "Analyze my code"}
-    `;
+User Question/Hint Request: ${hint || "Analyze my code"}`;
 
     for (const modelName of modelsToTry) {
       try {
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent([systemPrompt, userPrompt]);
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: systemInstruction,
+        });
+        const result = await model.generateContent(userPrompt);
         const response = await result.response;
         responseText = response.text();
         if (responseText) break;
       } catch (err) {
         lastError = err;
+        // If 503 (overloaded), try next model immediately
+        // If 404 (not found), try next model
+        // Otherwise break and report error
+        if (!err.message?.includes('503') && !err.message?.includes('404') && !err.message?.includes('not found')) {
+          break;
+        }
       }
     }
 
@@ -83,10 +92,19 @@ export async function getCodeReview(req, res) {
     if (!apiKey) return res.status(500).json({ message: "AI service not configured" });
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
-
-    const result = await model.generateContent(`Review this ${language} code and return JSON {quality, performance, bestPractices, risks}: \n${code}`);
-    const responseText = (await result.response).text();
+    const modelsToTry = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash"];
+    let responseText = "";
+    for (const modelName of modelsToTry) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(`Review this ${language} code and return JSON {quality, performance, bestPractices, risks}: \n${code}`);
+        responseText = (await result.response).text();
+        if (responseText) break;
+      } catch (err) {
+        if (!err.message?.includes('503') && !err.message?.includes('404')) throw err;
+      }
+    }
+    if (!responseText) return res.status(500).json({ message: "AI service temporarily unavailable. Please try again." });
     const cleanText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
 
     res.status(200).json({ review: JSON.parse(cleanText) });
@@ -104,7 +122,7 @@ export async function translateCode(req, res) {
     const genAI = new GoogleGenerativeAI(apiKey);
     
     // Use rotation for translation too
-    const modelsToTry = ["gemini-1.5-pro", "gemini-1.5-flash"];
+    const modelsToTry = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash", "gemini-pro-latest"];
     let translatedCode = "";
     let lastError = null;
 
@@ -130,6 +148,7 @@ export async function translateCode(req, res) {
             if (translatedCode) break;
         } catch (err) {
             lastError = err;
+            if (!err.message?.includes('503') && !err.message?.includes('404') && !err.message?.includes('not found')) break;
         }
     }
 
