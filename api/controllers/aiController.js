@@ -17,12 +17,12 @@ export async function getCodeSuggestions(req, res) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Models ordered by preference — stable models first, preview as fallback
+    // Models ordered by preference — using stable aliases to maximize quota availability
     const modelsToTry = [
       "gemini-2.0-flash",
-      "gemini-2.0-flash-lite",
-      "gemini-2.5-flash",
-      "gemini-pro-latest"
+      "gemini-flash-latest",
+      "gemini-pro-latest",
+      "gemini-2.0-flash-lite"
     ];
     
     let lastError = null;
@@ -52,12 +52,10 @@ User Question/Hint Request: ${hint || "Analyze my code"}`;
         if (responseText) break;
       } catch (err) {
         lastError = err;
-        // If 503 (overloaded), try next model immediately
-        // If 404 (not found), try next model
-        // Otherwise break and report error
-        if (!err.message?.includes('503') && !err.message?.includes('404') && !err.message?.includes('not found')) {
-          break;
-        }
+        const msg = err.message || "";
+        // Fallback on 503 (overload), 404 (not found), or 429 (rate limit)
+        const isRetryable = msg.includes('503') || msg.includes('404') || msg.includes('429') || msg.includes('not found') || msg.includes('quota');
+        if (!isRetryable) break;
       }
     }
 
@@ -92,7 +90,7 @@ export async function getCodeReview(req, res) {
     if (!apiKey) return res.status(500).json({ message: "AI service not configured" });
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const modelsToTry = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash"];
+    const modelsToTry = ["gemini-2.0-flash", "gemini-flash-latest", "gemini-pro-latest"];
     let responseText = "";
     for (const modelName of modelsToTry) {
       try {
@@ -101,7 +99,9 @@ export async function getCodeReview(req, res) {
         responseText = (await result.response).text();
         if (responseText) break;
       } catch (err) {
-        if (!err.message?.includes('503') && !err.message?.includes('404')) throw err;
+        const msg = err.message || "";
+        const isRetryable = msg.includes('503') || msg.includes('404') || msg.includes('429') || msg.includes('not found') || msg.includes('quota');
+        if (!isRetryable) throw err;
       }
     }
     if (!responseText) return res.status(500).json({ message: "AI service temporarily unavailable. Please try again." });
@@ -148,7 +148,9 @@ export async function translateCode(req, res) {
             if (translatedCode) break;
         } catch (err) {
             lastError = err;
-            if (!err.message?.includes('503') && !err.message?.includes('404') && !err.message?.includes('not found')) break;
+            const msg = err.message || "";
+            const isRetryable = msg.includes('503') || msg.includes('404') || msg.includes('429') || msg.includes('not found') || msg.includes('quota');
+            if (!isRetryable) break;
         }
     }
 
