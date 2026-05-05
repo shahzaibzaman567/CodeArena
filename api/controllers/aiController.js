@@ -17,13 +17,10 @@ export async function getCodeSuggestions(req, res) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Models ordered by preference — 2.5-flash works reliably
+    // Models ordered by preference
     const modelsToTry = [
-      "gemini-2.5-flash",
-      "gemini-2.0-flash",
-      "gemini-1.5-flash",
-      "gemini-pro-latest",
-      "gemini-pro"
+      "gemini-1.5-pro",
+      "gemini-1.5-flash"
     ];
     
     let lastError = null;
@@ -86,7 +83,7 @@ export async function getCodeReview(req, res) {
     if (!apiKey) return res.status(500).json({ message: "AI service not configured" });
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
     const result = await model.generateContent(`Review this ${language} code and return JSON {quality, performance, bestPractices, risks}: \n${code}`);
     const responseText = (await result.response).text();
@@ -106,8 +103,8 @@ export async function translateCode(req, res) {
     const apiKey = ENV.GEMINI_API_KEY || ENV.CLAUDE_API_KEY;
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Use rotation for translation too — 2.5-flash first
-    const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-pro-latest"];
+    // Use rotation for translation too
+    const modelsToTry = ["gemini-1.5-pro", "gemini-1.5-flash"];
     let translatedCode = "";
     let lastError = null;
 
