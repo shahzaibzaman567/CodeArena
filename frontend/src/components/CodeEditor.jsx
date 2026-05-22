@@ -118,22 +118,7 @@ function CodeEditorPanel({
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Give Control Button */}
-          {partnerName && (
-            <button
-              onClick={onControlHandoff}
-              className={`btn btn-sm gap-2 border-none transition-all duration-300 ${
-                controlHandedTo 
-                ? "bg-warning/10 text-warning hover:bg-warning/20" 
-                : "bg-primary/10 text-primary hover:bg-primary/20"
-              }`}
-            >
-              <div className={`size-2 rounded-full ${controlHandedTo ? "bg-warning" : "bg-primary"}`} />
-              <span className="text-[10px] font-black uppercase tracking-wider">
-                {controlHandedTo ? "Take Back Control" : "Give Control"}
-              </span>
-            </button>
-          )}
+
 
           <div className="flex items-center gap-2">
             <button
