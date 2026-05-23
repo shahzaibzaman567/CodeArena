@@ -19,9 +19,14 @@ export const useCreateSession = () => {
   const result = useMutation({
     mutationKey: ["createSession"],
     mutationFn: sessionApi.createSession,
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["activeSessions"] });
       toast.success("Session created successfully!");
+
+      if (Array.isArray(data?.inviteErrors) && data.inviteErrors.length > 0) {
+        const uniqueErrors = [...new Set(data.inviteErrors)];
+        toast.error(`Invite errors: ${uniqueErrors.join("; ")}`, { duration: 8000 });
+      }
     },
     onError: (error) => toast.error(getErrorMessage(error, "Failed to create room")),
   });
@@ -29,29 +34,42 @@ export const useCreateSession = () => {
   return result;
 };
 
-export const useActiveSessions = () => {
+export const useActiveSessions = (enabled = true) => {
   const result = useQuery({
     queryKey: ["activeSessions"],
     queryFn: sessionApi.getActiveSessions,
+    enabled,
+    refetchInterval: enabled ? 5000 : false,
+    refetchOnWindowFocus: true,
+    retry: (failureCount, error) => {
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        return failureCount < 2;
+      }
+      return failureCount < 3;
+    },
   });
 
   return result;
 };
 
-export const useMyRecentSessions = () => {
+export const useMyRecentSessions = (enabled = true) => {
   const result = useQuery({
     queryKey: ["myRecentSessions"],
     queryFn: sessionApi.getMyRecentSessions,
+    enabled,
+    refetchInterval: enabled ? 10000 : false,
   });
 
   return result;
 };
 
-export const useSessionById = (id) => {
+export const useSessionById = (id, options = {}) => {
+  const tokenReady = typeof window === "undefined" || !!window.__clerk_token;
+
   const result = useQuery({
     queryKey: ["session", id],
     queryFn: () => sessionApi.getSessionById(id),
-    enabled: !!id,
+    enabled: !!id && tokenReady && options.enabled !== false,
     refetchInterval: 5000,
     retry: (failureCount, error) => {
       // Don't retry on 404 - session doesn't exist
@@ -59,6 +77,7 @@ export const useSessionById = (id) => {
       return failureCount < 3;
     },
     staleTime: 2000, // Consider data fresh for 2 seconds
+    ...options,
   });
 
   return result;
@@ -105,10 +124,10 @@ export const useDeleteSession = () => {
   const result = useMutation({
     mutationKey: ["deleteSession"],
     mutationFn: sessionApi.deleteSession,
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["myRecentSessions"] });
       queryClient.invalidateQueries({ queryKey: ["activeSessions"] });
-      toast.success("Session deleted successfully!");
+      toast.success(data?.message || "Session removed successfully!");
     },
     onError: (error) => toast.error(getErrorMessage(error, "Failed to delete session")),
   });

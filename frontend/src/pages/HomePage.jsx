@@ -51,7 +51,7 @@ function HomePage() {
               </SignInButton>
             </SignedOut>
             <SignedIn>
-              <UserButton afterSignOutUrl="/" />
+              <UserButton signOutUrl="/" />
             </SignedIn>
           </div>
         </div>

@@ -2,8 +2,9 @@ CodeArena | Developer Platform
 
 CodeArena is a high-performance developer ecosystem built to streamline coding, enhance collaboration, and provide AI-powered development tools in a single platform.
 
-🌐 View Live Demo
-🌐 CODEARENA_URL=https://code-arena1-nine.vercel.app/dashboard
+🌐 Live: https://code-arena-lake.vercel.app
+
+📦 **Deploy:** See [DEPLOYMENT.md](./DEPLOYMENT.md) for GitHub push + Vercel env vars.
 
 ✨ Key Features
 🎮 Live Coding Arena

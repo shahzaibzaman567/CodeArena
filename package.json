@@ -7,7 +7,9 @@
     "frontend"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev --workspace=frontend\" \"nodemon api/index.js\"",
+    "dev": "concurrently -n frontend,backend -c blue,green \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "nodemon --watch api --ext js,mjs,json api/index.js",
     "build": "npm run build --workspace=frontend",
     "start": "node api/index.js",
     "install:all": "npm install"
@@ -17,11 +19,13 @@
     "@google/generative-ai": "^0.24.1",
     "@stream-io/node-sdk": "^0.7.12",
     "cors": "^2.8.6",
+    "deep-email-validator": "^0.1.27",
     "dotenv": "^17.4.0",
     "express": "^5.2.1",
     "inngest": "^3.54.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.1.5",
+    "nodemailer": "^8.0.7",
     "socket.io": "^4.8.3",
     "stream-chat": "^9.41.0"
   },

@@ -3,6 +3,7 @@ import { useUser } from "@clerk/clerk-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { useActiveSessions, useCreateSession, useMyRecentSessions } from "../hooks/useSessions.js";
+import { useClerkAuthSync } from "../hooks/useClerkAuthSync.js";
 import { sessionApi } from "../api/sessions.js";
 
 import Navbar from "../components/Navbar.jsx";
@@ -12,21 +13,35 @@ import ActiveSessions from "../components/ActiveSession.jsx";
 import RecentSessions from "../components/RecentSessions.jsx";
 import CreateSessionModal from "../components/CreateSessionsModal.jsx";
 import { SearchIcon } from "lucide-react";
+import { computeSessionCapacity } from "../lib/sessionCapacity.js";
 
 function DashboardPage() {
   const navigate = useNavigate();
   const { user } = useUser();
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [roomConfig, setRoomConfig] = useState({ problem: "", difficulty: "", description: "", maxParticipants: 1 });
+  const [roomConfig, setRoomConfig] = useState({
+    problem: "",
+    difficulty: "",
+    description: "",
+    maxParticipants: 1,
+    isChallengeMode: false,
+    invitedEmails: [],
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
   const createSessionMutation = useCreateSession();
+  const { authTokenReady, isSignedIn } = useClerkAuthSync();
+  const sessionsQueryEnabled = isSignedIn && authTokenReady;
 
-  const { data: activeSessionsData, isLoading: loadingActiveSessions } = useActiveSessions();
-  const { data: recentSessionsData, isLoading: loadingRecentSessions } = useMyRecentSessions();
+  const { data: activeSessionsData, isLoading: loadingActiveSessions } = useActiveSessions(
+    sessionsQueryEnabled
+  );
+  const { data: recentSessionsData, isLoading: loadingRecentSessions } = useMyRecentSessions(
+    sessionsQueryEnabled
+  );
 
   // Feature 1: Search sessions
   const handleSearch = async (query) => {
@@ -64,11 +79,20 @@ function DashboardPage() {
         difficulty: roomConfig.difficulty.toLowerCase(),
         description: roomConfig.description || "",
         maxParticipants: roomConfig.maxParticipants || 1,
+        invitedEmails: roomConfig.invitedEmails || [],
+        isChallengeMode: roomConfig.isChallengeMode || false,
       },
       {
         onSuccess: (data) => {
           setShowCreateModal(false);
-          setRoomConfig({ problem: "", difficulty: "", description: "", maxParticipants: 1 });
+          setRoomConfig({
+            problem: "",
+            difficulty: "",
+            description: "",
+            maxParticipants: 1,
+            isChallengeMode: false,
+            invitedEmails: [],
+          });
           
           // 🛡️ Senior Dev: Robust ID detection (handles various backend response shapes)
           const sessionId = data?.session?._id || data?.session?.id || data?._id || data?.id;
@@ -90,10 +114,15 @@ function DashboardPage() {
     : activeSessionsData?.sessions || [];
   const recentSessions = recentSessionsData?.sessions || [];
 
-  const isUserInSession = (session) => {
-    if (!user.id) return false;
+  const isUserHost = (session) => session.host?.clerkId === user?.id;
 
-    return session.host?.clerkId === user.id || session.participant?.clerkId === user.id;
+  const isUserInSession = (session) => {
+    if (!user?.id) return false;
+
+    return (
+      isUserHost(session) ||
+      (session.participants || []).some((participant) => participant?.clerkId === user.id)
+    );
   };
 
   return (
@@ -128,21 +157,47 @@ function DashboardPage() {
                       {searchResults.map((session) => (
                         <div key={session._id} className="card bg-base-200 border border-base-300">
                           <div className="card-body">
+                            {(() => {
+                              const capacity = session?.capacity || computeSessionCapacity(session);
+                              const isHost = isUserHost(session);
+                              const isMember = isUserInSession(session);
+                              const roomFull = capacity.isFull;
+                              const canEnter = isHost || isMember || !roomFull;
+
+                              return (
+                                <>
                             <h3 className="card-title text-lg">{session.problem}</h3>
                             <p className="text-sm text-base-content/70">{session.description}</p>
-                            <div className="flex gap-2 text-sm">
+                            <div className="flex gap-2 text-sm flex-wrap">
                               <span className="badge badge-primary">{session.difficulty}</span>
                               <span className="badge">{session.host?.name || "Host"}</span>
+                              {roomFull && (
+                                <span className="inline-flex items-center justify-center min-w-[2.25rem] h-6 px-1.5 rounded-md bg-error text-error-content text-[10px] font-black uppercase">
+                                  Full
+                                </span>
+                              )}
                             </div>
                             <p className="text-xs text-base-content/60">
-                              Max Participants: {session.maxParticipants}
+                              {capacity.joinedCount}/{capacity.maxParticipants} joined · {capacity.slotsAvailable} open
                             </p>
                             <button
                               onClick={() => navigate(`/session/${session._id}`)}
-                              className="btn btn-sm btn-primary mt-2"
+                              disabled={!canEnter}
+                              className={`btn btn-sm mt-2 ${canEnter ? "btn-primary" : "btn-disabled"}`}
                             >
-                              Join Session
+                              {!canEnter
+                                ? "Full"
+                                : isHost
+                                ? roomFull
+                                  ? "Open & End"
+                                  : "Rejoin Session"
+                                : isMember
+                                ? "Rejoin Session"
+                                : "Join Session"}
                             </button>
+                                </>
+                              );
+                            })()}
                           </div>
                         </div>
                       ))}
@@ -167,6 +222,7 @@ function DashboardPage() {
               sessions={activeSessions}
               isLoading={loadingActiveSessions}
               isUserInSession={isUserInSession}
+              isUserHost={isUserHost}
             />
           </div>
 

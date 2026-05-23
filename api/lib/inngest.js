@@ -27,11 +27,13 @@ export const syncUser = inngest.createFunction(
       image_url,
     } = event.data;
 
+    const emailAddress = email_addresses?.[0]?.email_address?.toLowerCase();
     const userPayload = {
       clerkId: id,
-      email: email_addresses?.[0]?.email_address,
+      email: emailAddress,
       name: `${first_name || ""} ${last_name || ""}`.trim(),
       profileImage: image_url,
+      role: emailAddress === ENV.ADMIN_EMAIL ? "admin" : "user",
     };
 
     const newUser = await step.run("save-user-db", async () => {

@@ -1,5 +1,5 @@
-import { useUser } from "@clerk/clerk-react";
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { SignInButton, useUser } from "@clerk/clerk-react";
+import { useEffect, useState, useCallback, useMemo, useRef, Component } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useEndSession, useJoinSession, useSessionById, useUpdateSession } from "../hooks/useSessions.js";
 import { useSaveProgress } from "../hooks/useSubmissions.js";
@@ -28,6 +28,7 @@ import OutputPanel from "../components/OutputPanel.jsx";
 import { debounce } from "lodash-es";
 
 import useStreamClient from "../hooks/useStreamClient.js";
+import { useClerkAuthSync } from "../hooks/useClerkAuthSync.js";
 import useSocket from "../hooks/useSocket.js";
 import { StreamCall, StreamVideo } from "@stream-io/video-react-sdk";
 import VideoCallUI from "../components/VideoCallUI.jsx";
@@ -37,14 +38,18 @@ function SessionPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useUser();
+  const { authTokenReady, authReady, isLoaded: isUserLoaded, isSignedIn } = useClerkAuthSync();
   const [output, setOutput] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
+  const currentUrl = typeof window !== "undefined" ? window.location.href : "/";
   const [editorMarkers, setEditorMarkers] = useState([]);
   const [isTranslating, setIsTranslating] = useState(false);
   const [isSyncing, setIsSyncing] = useState(true);
   const [controlHandedTo, setControlHandedTo] = useState(null);
 
-  const { data: sessionData, isLoading: loadingSession, refetch } = useSessionById(id);
+  const { data: sessionData, isLoading: loadingSession, isError: sessionLoadError, error: sessionLoadErrorInfo, refetch } = useSessionById(id, {
+    enabled: isSignedIn && isUserLoaded && authTokenReady,
+  });
   const updateSessionMutation = useUpdateSession();
   
   const { data: problemResult } = useProblemById(sessionData?.session?.problemId);
@@ -55,8 +60,14 @@ function SessionPage() {
   const createProblemMutation = useCreateProblem();
 
   const session = sessionData?.session;
+  const viewer = sessionData?.viewer;
+  const sessionParticipants = session?.participants || [];
   const isHost = session?.host?.clerkId === user?.id;
-  const isParticipant = session?.participant?.clerkId === user?.id;
+  const isParticipant = sessionParticipants.some((participant) => participant?.clerkId === user?.id);
+  const otherMembers = [session?.host, ...sessionParticipants].filter(
+    (member) => member?.clerkId && member.clerkId !== user?.id
+  );
+  const otherUser = otherMembers[0] || null;
 
   const { 
     socket, 
@@ -67,16 +78,18 @@ function SessionPage() {
     off: offSocket
   } = useSocket(id, user?.id, isHost || isParticipant);
 
-  const { call, channel, chatClient, isInitializingCall, streamClient } = useStreamClient(
+  const { call, channel, chatClient, isInitializingCall, streamClient, videoBlockedReason } = useStreamClient(
     session,
     loadingSession,
     isHost,
-    isParticipant
+    isParticipant,
+    authTokenReady
   );
 
   const [selectedLanguage, setSelectedLanguage] = useState("javascript");
   const [codeByLanguage, setCodeByLanguage] = useState({});
   const code = codeByLanguage[selectedLanguage] || "";
+  const autoJoinAttemptedRef = useRef(false);
 
   // Sync code with AI widget
   const syncCodeWithAI = useCallback((newCode, lang, problem) => {
@@ -356,6 +369,44 @@ function SessionPage() {
     };
   }, [handleCodeChange]);
 
+  const isReadOnly = useMemo(() => {
+    if (isTranslating) return true;
+    if (session?.isChallengeMode && !isHost) return true;
+
+    // If control is handed to someone else (not me), I am read-only
+    if (controlHandedTo && controlHandedTo !== user?.id) return true;
+
+    return false;
+  }, [isTranslating, session?.isChallengeMode, isHost, controlHandedTo, user?.id]);
+
+  useEffect(() => {
+    if (
+      !authTokenReady ||
+      !session ||
+      !viewer?.isInvited ||
+      isHost ||
+      isParticipant ||
+      autoJoinAttemptedRef.current
+    ) {
+      return;
+    }
+
+    if (!viewer.canJoin) {
+      autoJoinAttemptedRef.current = true;
+      return;
+    }
+
+    autoJoinAttemptedRef.current = true;
+    joinSessionMutation.mutate(id, {
+      onSuccess: () => {
+        refetch();
+      },
+      onError: (err) => {
+        toast.error(err.response?.data?.message || "Failed to join session");
+      },
+    });
+  }, [authTokenReady, session, viewer, isHost, isParticipant, id, joinSessionMutation, refetch]);
+
   const handleToggleChallengeMode = () => {
     if (!isHost) return;
     updateSessionMutation.mutate({
@@ -481,9 +532,115 @@ function SessionPage() {
     if (!newState) setControlHandedTo(null);
   };
 
+  if (!isUserLoaded) {
+    return (
+      <div className="h-screen bg-base-100 flex items-center justify-center">
+        <div className="text-center p-8 rounded-3xl border border-base-300 shadow-2xl bg-base-100">
+          <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          </div>
+          <h2 className="text-2xl font-bold">Loading session...</h2>
+          <p className="text-base-content/70 mt-2">Fetching your invite status and session details.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isSignedIn && isUserLoaded && !authReady) {
+    return (
+      <div className="h-screen bg-base-100 flex items-center justify-center">
+        <div className="text-center p-8 rounded-3xl border border-base-300 shadow-2xl bg-base-100">
+          <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          </div>
+          <h2 className="text-2xl font-bold">Signing you in...</h2>
+          <p className="text-base-content/70 mt-2">Waiting for Clerk to finish authentication.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isSignedIn && isUserLoaded && authReady && !authTokenReady) {
+    return (
+      <div className="h-screen bg-base-100 flex items-center justify-center">
+        <div className="text-center p-8 rounded-3xl border border-base-300 shadow-2xl bg-base-100 max-w-lg">
+          <h2 className="text-2xl font-bold">Authentication incomplete</h2>
+          <p className="text-base-content/70 mt-2">
+            We could not obtain a secure session token. Sign out, sign back in with the invited Gmail account, then reopen this link.
+          </p>
+          <button type="button" className="btn btn-primary mt-6" onClick={() => window.location.reload()}>
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    return (
+      <div className="h-screen bg-base-100 flex flex-col overflow-hidden relative">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="max-w-xl w-full bg-base-100 rounded-3xl shadow-2xl border border-base-300 p-10 text-center">
+            <h1 className="text-3xl font-black mb-4">Sign in to access your invitation</h1>
+            <p className="text-base-content/70 mb-6">
+              Use the invited Gmail account to join this session. After signing in you will remain on this page.
+            </p>
+            <SignInButton
+              mode="redirect"
+              forceRedirectUrl={currentUrl}
+              fallbackRedirectUrl={currentUrl}
+              redirectUrl={currentUrl}
+            >
+              <button className="btn btn-primary btn-lg">Sign in with Google</button>
+            </SignInButton>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (sessionLoadError) {
+    const message =
+      sessionLoadErrorInfo?.response?.data?.message || sessionLoadErrorInfo?.message || "Unable to load session.";
+
+    return (
+      <div className="h-screen bg-base-100 flex flex-col overflow-hidden relative">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="max-w-xl w-full bg-base-100 rounded-3xl shadow-2xl border border-base-300 p-10 text-center">
+            <h1 className="text-3xl font-black mb-4">Session Load Failed</h1>
+            <p className="text-base-content/70 mb-6">{message}</p>
+            <button
+              className="btn btn-primary"
+              onClick={() => refetch()}
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadingSession || !session) {
+    return (
+      <div className="h-screen bg-base-100 flex flex-col overflow-hidden relative">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="text-center">
+            <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+            </div>
+            <p className="text-lg font-semibold">Loading session...</p>
+            <p className="text-base-content/60 mt-2">Please wait while we verify your invite and load the room.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const handleControlHandoff = () => {
-    const otherUser = isHost ? session?.participant : session?.host;
-    
     if (!otherUser || !otherUser.clerkId) {
         toast.error("Waiting for partner to join...");
         return;
@@ -525,19 +682,11 @@ function SessionPage() {
     }
   };
 
-  const isReadOnly = useMemo(() => {
-    if (isTranslating) return true;
-    if (session?.isChallengeMode && !isHost) return true;
-
-    // If control is handed to someone else (not me), I am read-only
-    if (controlHandedTo && controlHandedTo !== user?.id) return true;
-
-    return false;
-  }, [isTranslating, session?.isChallengeMode, isHost, controlHandedTo, user?.id]);
-
   // ==========================================
   // Render
   // ==========================================
+  const showJoinPrompt = !isHost && !isParticipant && session?.status === "active";
+
   return (
     <div className="h-screen bg-base-100 flex flex-col overflow-hidden relative">
       <Navbar />
@@ -586,7 +735,76 @@ function SessionPage() {
           </div>
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      {showJoinPrompt && (
+        <div className="px-4 pt-4 md:px-6">
+          <div className="rounded-3xl border border-primary/20 bg-gradient-to-r from-base-100 via-base-100 to-primary/10 shadow-lg">
+            <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="mt-1 flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <UsersIcon className="size-6" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black">
+                    {viewer?.isInvited ? "Session invite ready" : "Join this live session"}
+                  </h2>
+                  <p className="mt-1 text-sm text-base-content/70">
+                    {viewer?.isInvited
+                      ? `You were invited by ${session?.host?.name}. Join when you're ready — open slots are shared with everyone.`
+                      : `This room is open. ${viewer?.slotsAvailable ?? 0} slot(s) left before the room is full.`}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-3 text-sm text-base-content/70">
+                    <span className="rounded-full bg-base-200 px-3 py-1">
+                      Problem: <strong className="text-base-content">{session?.problem}</strong>
+                    </span>
+                    <span className="rounded-full bg-base-200 px-3 py-1">
+                      {viewer?.joinedCount ?? 0}/{viewer?.participantSlotsTotal ?? session?.maxParticipants ?? 1} joined · {viewer?.slotsAvailable ?? 0} open
+                    </span>
+                    {(viewer?.pendingInviteCount ?? 0) > 0 && (
+                      <span className="rounded-full bg-warning/10 px-3 py-1 font-semibold text-warning">
+                        {viewer.pendingInviteCount} invite(s) pending
+                      </span>
+                    )}
+                    {viewer?.isFull && (
+                      <span className="inline-flex items-center justify-center min-w-[2.25rem] h-6 px-1.5 rounded-md bg-error text-error-content text-[10px] font-black uppercase">
+                        Full
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <button
+                  onClick={handleJoinSession}
+                  disabled={joinSessionMutation.isPending || !viewer?.canJoin}
+                  className={`btn btn-lg font-black shadow-xl ${viewer?.isFull ? "btn-error" : "btn-primary"}`}
+                >
+                  {joinSessionMutation.isPending ? (
+                    <Loader2Icon className="animate-spin" />
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      {viewer?.canJoin
+                        ? viewer?.isInvited
+                          ? "Accept & Join Now"
+                          : "Join Session"
+                        : "Session Full"}
+                      <ArrowRightIcon className="size-5" />
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => navigate("/dashboard")}
+                  className="btn btn-ghost btn-lg"
+                >
+                  Maybe Later
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-hidden pt-4">
         <PanelGroup orientation="horizontal">
           {/* LEFT PANEL - PROBLEM & EDITOR */}
           <Panel defaultSize={45} minSize={25}>
@@ -626,7 +844,7 @@ function SessionPage() {
                           onControlHandoff={handleControlHandoff}
                           controlHandedTo={controlHandedTo}
                           isHost={isHost}
-                          partnerName={isHost ? session?.participant?.name : session?.host?.name}
+                          partnerName={otherUser?.name}
                         />
                     </Panel>
                     <PanelResizeHandle className="h-2 bg-base-300 hover:bg-primary cursor-row-resize flex items-center justify-center">
@@ -658,13 +876,38 @@ function SessionPage() {
                         <VideoCallUI chatClient={chatClient} channel={channel} />
                       </StreamCall>
                     </StreamVideo>
+                  ) : videoBlockedReason === "join_required" && showJoinPrompt ? (
+                    <div className="h-full flex flex-col items-center justify-center gap-3 p-6 text-center">
+                      <UsersIcon className="size-12 text-primary" />
+                      <p className="text-lg font-bold">Join to start video</p>
+                      <p className="text-sm text-base-content/70 max-w-xs">
+                        Accept the session invite above to connect to the live video room with the host.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleJoinSession}
+                        disabled={joinSessionMutation.isPending || !viewer?.canJoin}
+                        className="btn btn-primary btn-sm mt-2"
+                      >
+                        {joinSessionMutation.isPending ? "Joining..." : "Join & Enable Video"}
+                      </button>
+                    </div>
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center gap-3 p-6 text-center">
                       <UsersIcon className="size-12 text-primary" />
                       <p className="text-lg font-bold">Video call unavailable</p>
                       <p className="text-sm text-base-content/70 max-w-xs">
-                        We could not initialize the call context. Refresh the page or try again in a moment.
+                        {videoBlockedReason === "auth"
+                          ? "Your sign-in session expired or is still loading. Please refresh and sign in again with the invited Gmail account."
+                          : "We could not initialize the call context. Refresh the page or try again in a moment."}
                       </p>
+                      <button
+                        type="button"
+                        onClick={() => window.location.reload()}
+                        className="btn btn-outline btn-sm mt-2"
+                      >
+                        Refresh
+                      </button>
                     </div>
                   )}
                </div>
@@ -672,45 +915,68 @@ function SessionPage() {
           </Panel>
         </PanelGroup>
       </div>
-
-      {/* JOIN OVERLAY */}
-      {!isHost && !isParticipant && session?.status === "active" && (
-        <div className="absolute inset-0 z-[100] bg-base-300/80 backdrop-blur-md flex items-center justify-center p-6">
-          <div className="max-w-md w-full bg-base-100 rounded-3xl shadow-2xl border border-base-300 p-8 text-center space-y-6">
-            <div className="size-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto">
-              <UsersIcon className="size-10 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-3xl font-black mb-2">Join Session?</h2>
-              <p className="text-base-content/60">
-                You are invited to join <strong>{session?.host?.name}'s</strong> session to solve <strong>{session?.problem}</strong>.
-              </p>
-            </div>
-            
-            <div className="flex flex-col gap-3 pt-4">
-              <button 
-                onClick={handleJoinSession}
-                disabled={joinSessionMutation.isPending}
-                className="btn btn-primary btn-lg font-black shadow-xl"
-              >
-                {joinSessionMutation.isPending ? (
-                  <Loader2Icon className="animate-spin" />
-                ) : (
-                  <span className="flex items-center gap-2">Accept & Join Now <ArrowRightIcon className="size-5" /></span>
-                )}
-              </button>
-              <button 
-                onClick={() => navigate("/dashboard")}
-                className="btn btn-ghost"
-              >
-                Maybe Later
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-export default SessionPage;
+class SessionPageErrorBoundary extends Component {
+  state = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("[SessionPage ErrorBoundary caught an error]:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-screen bg-base-100 flex flex-col justify-center items-center p-6 text-center">
+          <div className="max-w-2xl w-full p-8 bg-error/10 border border-error/25 rounded-3xl shadow-2xl text-center">
+            <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-error/20 flex items-center justify-center text-error">
+              <svg xmlns="http://www.w3.org/2000/svg" className="size-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 className="text-3xl font-black text-error mb-2">Session Room Render Error</h2>
+            <p className="text-base-content/70 mt-2 max-w-md mx-auto">
+              CodeArena encountered a runtime rendering exception inside the live session component tree.
+            </p>
+            <div className="mt-6 text-left">
+              <span className="text-xs uppercase font-bold text-base-content/40 tracking-wider">Error Details</span>
+              <pre className="mt-1 text-xs bg-base-300 p-5 rounded-2xl text-error font-mono overflow-x-auto border border-base-300 max-h-60 whitespace-pre-wrap">
+                {this.state.error?.stack || this.state.error?.message || String(this.state.error)}
+              </pre>
+            </div>
+            <div className="mt-6 flex justify-center gap-4">
+              <button 
+                className="btn btn-primary px-6" 
+                onClick={() => window.location.reload()}
+              >
+                Reload Room
+              </button>
+              <button 
+                className="btn btn-ghost px-6" 
+                onClick={() => window.location.href = "/dashboard"}
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export default function SessionPageWithErrorBoundary(props) {
+  return (
+    <SessionPageErrorBoundary>
+      <SessionPage {...props} />
+    </SessionPageErrorBoundary>
+  );
+}
+

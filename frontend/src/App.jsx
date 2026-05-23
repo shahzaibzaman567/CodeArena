@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { useUser, useAuth } from "@clerk/clerk-react";
+import { useUser } from "@clerk/clerk-react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useClerkAuthSync, waitForClerkToken } from "./hooks/useClerkAuthSync.js";
 
 import HomePage from "./pages/HomePage.jsx";
 import ProblemPage from "./pages/ProblemPage.jsx";
@@ -9,6 +10,9 @@ import ProblemsPage from "./pages/ProblemsPage.jsx";
 import SessionPage from "./pages/SessionPage.jsx";
 import CommunityPage from "./pages/CommunityPage.jsx";
 import DemoPage from "./pages/DemoPage.jsx";
+import AdminPage from "./pages/AdminPage.jsx";
+import BooksPage from "./pages/BooksPage.jsx";
+import { useAdminAccess } from "./hooks/useAdminAccess.js";
 
 import FloatingAIWidget from "./components/FloatingAIWidget.jsx";
 import { Toaster } from "react-hot-toast";
@@ -17,31 +21,20 @@ import { StreamChat } from "stream-chat";
 import { sessionApi } from "./api/sessions.js";
 
 function App() {
-  const { isSignedIn, isLoaded, user } = useUser();
-  const { getToken } = useAuth();
+  const { user } = useUser();
+  const { authReady, authTokenReady, isLoaded, isSignedIn } = useClerkAuthSync();
   const location = useLocation();
   const [hasNewCommunityMessage, setHasNewCommunityMessage] = useState(false);
-
-  // 🔥 Sync Clerk Token to Axios window var (Cross-Domain Fix)
-  useEffect(() => {
-    const syncToken = async () => {
-      if (isSignedIn) {
-        const token = await getToken();
-        window.__clerk_token = token;
-      } else {
-        window.__clerk_token = null;
-      }
-    };
-    syncToken();
-    const interval = setInterval(syncToken, 1000 * 50); // Refresh every 50s
-    return () => clearInterval(interval);
-  }, [isSignedIn, getToken]);
+  const { data: adminAccess, isLoading: loadingAdminAccess } = useAdminAccess(
+    isSignedIn && authReady && authTokenReady
+  );
+  const isAdmin = Boolean(adminAccess?.isAdmin);
 
   // StrictMode dev double-run guard
   const initOnceRef = useRef(false);
 
   useEffect(() => {
-    if (!isSignedIn || !user) return;
+    if (!isSignedIn || !user || !authTokenReady) return;
 
     const apiKey = import.meta.env.VITE_STREAM_API_KEY;
     if (!apiKey) {
@@ -57,6 +50,9 @@ function App() {
       initOnceRef.current = true;
 
       try {
+        const clerkToken = await waitForClerkToken();
+        if (!clerkToken || cancelled) return;
+
         const { token, userId, userName, userImage } =
           await sessionApi.getStreamToken();
 
@@ -117,7 +113,7 @@ function App() {
       initOnceRef.current = false;
       // Do NOT disconnect here — CommunityPage reuses this same singleton connection
     };
-  }, [isSignedIn, user?.id]);
+  }, [isSignedIn, user?.id, authTokenReady]);
 
   useEffect(() => {
     if (location.pathname === "/community") {
@@ -128,7 +124,19 @@ function App() {
     }
   }, [location.pathname]);
 
-  if (!isLoaded) return null;
+  if (!isLoaded || (isSignedIn && (!authReady || !authTokenReady))) {
+    return (
+      <div className="h-screen bg-base-100 flex items-center justify-center">
+        <div className="text-center px-6 py-8 rounded-3xl border border-base-300 shadow-2xl bg-base-100">
+          <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          </div>
+          <h2 className="text-2xl font-bold">Loading CodeArena</h2>
+          <p className="text-base-content/70 mt-2">Preparing your workspace. Please wait a moment.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -146,6 +154,10 @@ function App() {
           element={isSignedIn ? <ProblemsPage /> : <Navigate to={"/"} />}
         />
         <Route
+          path="/books"
+          element={isSignedIn ? <BooksPage /> : <Navigate to={"/"} />}
+        />
+        <Route
           path="/community"
           element={isSignedIn ? <CommunityPage /> : <Navigate to={"/"} />}
         />
@@ -154,9 +166,18 @@ function App() {
           element={isSignedIn ? <ProblemPage /> : <Navigate to={"/"} />}
         />
         <Route path="/demo" element={<DemoPage />} />
+        <Route path="/session/:id" element={<SessionPage />} />
         <Route
-          path="/session/:id"
-          element={isSignedIn ? <SessionPage /> : <Navigate to={"/"} />}
+          path="/admin"
+          element={
+            !isSignedIn ? (
+              <Navigate to="/" />
+            ) : loadingAdminAccess ? null : isAdmin ? (
+              <AdminPage />
+            ) : (
+              <Navigate to="/dashboard" />
+            )
+          }
         />
       </Routes>
 

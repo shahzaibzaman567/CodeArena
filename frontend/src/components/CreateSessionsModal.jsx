@@ -1,7 +1,6 @@
-import { Code2Icon, LoaderIcon, PlusIcon, Search, UserPlus, X, ShieldCheck, ShieldAlert } from "lucide-react";
+import { LoaderIcon, PlusIcon, UserPlus, X, ShieldCheck, ShieldAlert } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useProblems } from "../hooks/useProblems";
-import { sessionApi } from "../api/sessions";
 import toast from "react-hot-toast";
 
 function CreateSessionModal({
@@ -14,42 +13,59 @@ function CreateSessionModal({
 }) {
   const { data: problemsData } = useProblems();
   const [customProblem, setCustomProblem] = useState(false);
-  const [emailInput, setEmailInput] = useState("");
-  const [invitedUsers, setInvitedUsers] = useState([]);
-  const [isSearchingUser, setIsSearchingUser] = useState(false);
+  const [invitedEmails, setInvitedEmails] = useState([]);
 
   const problems = problemsData?.problems || [];
 
-  const handleSearchUser = async () => {
-    if (!emailInput.trim()) return;
-    setIsSearchingUser(true);
-    try {
-      const data = await sessionApi.searchUserByEmail(emailInput);
-      if (invitedUsers.find((u) => u.email === data.user.email)) {
-        toast.error("User already invited");
-      } else {
-        setInvitedUsers([...invitedUsers, data.user]);
-        setRoomConfig({
-          ...roomConfig,
-          invitedEmails: [...(roomConfig.invitedEmails || []), data.user.email],
-        });
-        setEmailInput("");
-        toast.success(`Found user: ${data.user.name}`);
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "User not found");
-    } finally {
-      setIsSearchingUser(false);
+  const addEmailField = () => {
+    const maxInvites = Math.max(0, roomConfig.maxParticipants || 1);
+    if (invitedEmails.length >= maxInvites) {
+      toast.error(`Maximum invitees for this session capacity is ${maxInvites}`);
+      return;
     }
+    setInvitedEmails([...invitedEmails, ""]);
   };
 
-  const removeInvitedUser = (email) => {
-    setInvitedUsers(invitedUsers.filter((u) => u.email !== email));
+  const handleEmailChange = (index, value) => {
+    const updated = [...invitedEmails];
+    updated[index] = value;
+    setInvitedEmails(updated);
     setRoomConfig({
       ...roomConfig,
-      invitedEmails: (roomConfig.invitedEmails || []).filter((e) => e !== email),
+      invitedEmails: updated.filter(email => email.trim() !== ""),
     });
   };
+
+  const removeEmailField = (index) => {
+    const updated = invitedEmails.filter((_, i) => i !== index);
+    setInvitedEmails(updated);
+    setRoomConfig({
+      ...roomConfig,
+      invitedEmails: updated.filter(email => email.trim() !== ""),
+    });
+  };
+
+  // Adjust invited emails list if maxParticipants changes and exceeds the capacity
+  useEffect(() => {
+    const maxInvites = Math.max(0, roomConfig.maxParticipants || 1);
+    if (invitedEmails.length > maxInvites) {
+      const updated = invitedEmails.slice(0, maxInvites);
+      setInvitedEmails(updated);
+      setRoomConfig({
+        ...roomConfig,
+        invitedEmails: updated.filter(email => email.trim() !== ""),
+      });
+    }
+  }, [roomConfig.maxParticipants]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setInvitedEmails(roomConfig.invitedEmails || []);
+      return;
+    }
+
+    setInvitedEmails([]);
+  }, [isOpen, roomConfig.invitedEmails]);
 
   if (!isOpen) return null;
 
@@ -156,7 +172,7 @@ function CreateSessionModal({
               >
                 {[1, 2, 3, 4, 5].map((num) => (
                   <option key={num} value={num}>
-                    {num} {num === 1 ? "(Solo/1v1)" : ""}
+                    {num} participant slot{num > 1 ? "s" : ""}
                   </option>
                 ))}
               </select>
@@ -198,46 +214,53 @@ function CreateSessionModal({
 
           {/* INVITE USERS */}
           <div className="space-y-2">
-            <label className="label">
-              <span className="label-text font-semibold">Invite Users (by Email)</span>
-            </label>
-            <div className="flex gap-2">
-              <div className="relative grow">
-                <input
-                  type="email"
-                  placeholder="user@example.com"
-                  className="input input-bordered w-full pl-10"
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearchUser()}
-                />
-                <Search className="absolute left-3 top-3 size-4 opacity-50" />
-              </div>
-              <button
-                className="btn btn-primary"
-                onClick={handleSearchUser}
-                disabled={isSearchingUser || !emailInput}
-              >
-                {isSearchingUser ? <LoaderIcon className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
-                Invite
-              </button>
+            <div className="flex justify-between items-center">
+              <label className="label">
+                <span className="label-text font-semibold">Invite Peers (by Email)</span>
+              </label>
+              {invitedEmails.length < Math.max(0, roomConfig.maxParticipants || 1) && (
+                <button
+                  type="button"
+                  onClick={addEmailField}
+                  className="btn btn-xs btn-outline btn-accent flex items-center gap-1"
+                >
+                  <PlusIcon className="size-3" />
+                  Add Recipient
+                </button>
+              )}
             </div>
 
-            {invitedUsers.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {invitedUsers.map((user) => (
-                  <div key={user.email} className="badge badge-lg gap-2 py-4">
-                    <div className="avatar">
-                      <div className="w-6 rounded-full">
-                        <img src={user.profileImage || "/placeholder.png"} alt={user.name} />
-                      </div>
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {invitedEmails.length === 0 ? (
+                <p className="text-xs text-base-content/50 italic px-1">
+                  No invitees. Add registered user emails and only those invited accounts will be able to auto-join.
+                </p>
+              ) : (
+                invitedEmails.map((email, index) => (
+                  <div key={index} className="flex gap-2 items-center">
+                    <div className="relative grow">
+                      <input
+                        type="email"
+                        placeholder="peer@example.com"
+                        className="input input-bordered w-full pl-10 input-sm focus:input-primary"
+                        value={email}
+                        onChange={(e) => handleEmailChange(index, e.target.value)}
+                        required
+                      />
+                      <UserPlus className="absolute left-3 top-2.5 size-3.5 opacity-50" />
                     </div>
-                    {user.name}
-                    <X className="size-3 cursor-pointer hover:text-error" onClick={() => removeInvitedUser(user.email)} />
+                    <button
+                      type="button"
+                      onClick={() => removeEmailField(index)}
+                      className="btn btn-sm btn-error btn-circle"
+                      title="Remove"
+                    >
+                      <X className="size-4" />
+                    </button>
                   </div>
-                ))}
-              </div>
-            )}
+                ))
+              )}
+            </div>
           </div>
         </div>
 
@@ -264,4 +287,4 @@ function CreateSessionModal({
   );
 }
 
-export default CreateSessionModal;
+export default CreateSessionModal;

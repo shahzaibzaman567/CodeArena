@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { io } from 'socket.io-client';
+import toast from 'react-hot-toast';
 
 function getSocketServerUrl() {
   const configuredUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
@@ -11,6 +12,7 @@ function getSocketServerUrl() {
 
 export function useSocket(sessionId, userId, enabled = true) {
   const socketRef = useRef(null);
+  const errorToastShownRef = useRef(false);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {

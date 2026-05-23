@@ -1,14 +1,24 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from "@tailwindcss/vite"
+import dotenv from "dotenv"
+import path from "path"
+
+dotenv.config({ path: path.resolve(__dirname, "../.env"), silent: true })
+
+const BACKEND_TARGET = process.env.VITE_BACKEND_URL || "http://127.0.0.1:4000"
 
 export default defineConfig({
   envDir: "../",
   server: {
+    host: "127.0.0.1",
     proxy: {
       "/api": {
-        target: "http://localhost:4000",
+        target: BACKEND_TARGET,
         changeOrigin: true,
+        secure: false,
+        ws: true,
+        timeout: 60000,
       },
     },
   },

@@ -39,6 +39,7 @@ const SEED_PROBLEMS = [
 ];
 
 import Problem from "../models/Problem.js";
+import { ENV } from "../lib/env.js";
 
 export const createProblem = async (req, res) => {
   try {
@@ -74,8 +75,8 @@ export const getProblems = async (req, res) => {
   try {
     const { search } = req.query;
     // req.user may be undefined on public route — check safely
-    const userEmail = req.user?.email;
-    const isAdminUser = userEmail === "shahzaibzaman465@gmail.com";
+    const userEmail = req.user?.email?.toLowerCase();
+    const isAdminUser = userEmail === ENV.ADMIN_EMAIL;
 
     let query = {};
     if (search) {

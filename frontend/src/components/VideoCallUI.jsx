@@ -3,7 +3,6 @@ import {
   CallingState,
   SpeakerLayout,
   useCallStateHooks,
-  ParticipantView,
 } from "@stream-io/video-react-sdk";
 import { Loader2Icon, MessageSquareIcon, UsersIcon, XIcon } from "lucide-react";
 import { useState } from "react";
@@ -19,6 +18,7 @@ function VideoCallUI({ chatClient, channel }) {
   const callingState = useCallCallingState();
   const participantCount = useParticipantCount();
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const isWaitingForOthers = participantCount <= 1;
 
   if (callingState === CallingState.JOINING) {
     return (
@@ -65,30 +65,17 @@ function VideoCallUI({ chatClient, channel }) {
         )}
 
         {/* MAIN VIDEO AREA */}
-        <div className="flex-1 relative overflow-hidden bg-black">
-          {/* Custom robust layout with identity overlays */}
-          <SpeakerLayout 
-            ParticipantViewUI={(props) => (
-              <div className="relative w-full h-full">
-                <ParticipantView {...props} />
-                <div className="absolute bottom-4 left-4 z-30 flex items-center gap-2 bg-black/60 backdrop-blur-md border border-white/10 p-1.5 rounded-2xl pr-4">
-                  <div className="size-8 rounded-xl overflow-hidden border border-white/20">
-                    <img 
-                      src={props.participant.image} 
-                      alt={props.participant.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => { e.target.src = `https://api.dicebear.com/7.x/initials/svg?seed=${props.participant.name}` }}
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-white/50 font-black uppercase tracking-widest leading-none">Participant</span>
-                    <span className="text-sm text-white font-bold truncate max-w-[120px]">{props.participant.name}</span>
-                  </div>
-                  {props.participant.isLocal && <span className="badge badge-primary badge-xs ml-2">You</span>}
-                </div>
+        <div className="flex-1 relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800">
+          <SpeakerLayout />
+
+          {isWaitingForOthers && (
+            <div className="pointer-events-none absolute inset-x-4 top-4 z-10">
+              <div className="mx-auto max-w-sm rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-center text-white shadow-xl backdrop-blur-md">
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-white/60">Live Room</p>
+                <p className="mt-1 text-sm font-semibold">Waiting for another participant to join the call.</p>
               </div>
-            )}
-          />
+            </div>
+          )}
         </div>
 
         {/* BOTTOM FLOATING OVERLAY: Call Controls */}
@@ -137,6 +124,16 @@ function VideoCallUI({ chatClient, channel }) {
       )}
 
       <style dangerouslySetInnerHTML={{ __html: `
+        .str-video,
+        .str-video__speaker-layout__wrapper,
+        .str-video__speaker-layout,
+        .str-video__speaker-layout__spotlight {
+          height: 100%;
+        }
+        .str-video__participant-view,
+        .str-video__video-placeholder {
+          background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.92)) !important;
+        }
         .arena-session-chat .str-chat { height: 100%; }
         .arena-session-chat .str-chat__ul { background: transparent !important; }
         .arena-session-chat .str-chat__message-input { background: rgba(0,0,0,0.2) !important; border-top: 1px solid rgba(255,255,255,0.05) !important; }

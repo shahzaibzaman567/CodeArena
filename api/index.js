@@ -1,9 +1,12 @@
 import express from "express";
+import http from "http";
 import cors from "cors";
 import { serve } from "inngest/express";
 import { inngest, functions } from "./lib/inngest.js";
 import { connectDB } from "./lib/db.js";
+import { initializeSocket, setIOInstance } from "./lib/socket.js";
 import { clerkMiddleware } from "@clerk/express";
+import { ENV } from "./lib/env.js";
 
 import { chatRoutes } from "./routes/chatRoute.js";
 import { sessionRoutes } from "./routes/sessionRoutes.js";
@@ -12,6 +15,9 @@ import executeRoutes from "./routes/execute.js";
 import { problemRoutes } from "./routes/problemRoutes.js";
 import { communityRoutes } from "./routes/communityRoutes.js";
 import submissionRoutes from "./routes/submissionRoutes.js";
+import { adminRoutes } from "./routes/adminRoutes.js";
+import { notificationRoutes } from "./routes/notificationRoutes.js";
+import { bookRoutes } from "./routes/bookRoutes.js";
 
 const app = express();
 
@@ -63,8 +69,14 @@ app.use(async (req, res, next) => {
   }
 });
 
-// 🛡️ Senior Dev: Clerk Middleware (Scoped to API)
-app.use("/api", clerkMiddleware());
+// Clerk auth for API routes (Bearer session tokens from the SPA)
+app.use(
+  "/api",
+  clerkMiddleware({
+    secretKey: ENV.CLERK_SECRET_KEY,
+    publishableKey: ENV.CLERK_PUBLISHABLE_KEY,
+  })
+);
 
 /* ---------------------------
    SERVERLESS ROUTES
@@ -77,6 +89,9 @@ app.use("/api/execute", executeRoutes);
 app.use("/api/community", communityRoutes);
 app.use("/api/problems", problemRoutes);
 app.use("/api/submissions", submissionRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/books", bookRoutes);
 
 // Health Checks
 app.get("/health", (req, res) => res.status(200).json({ status: "healthy" }));
@@ -99,8 +114,73 @@ export default app;
 
 // Start server locally
 if (process.env.NODE_ENV !== "production") {
-  const PORT = process.env.PORT || 4000;
-  app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
-  });
+  const requestedPort = Number(process.env.PORT) || 4000;
+  const allowPortFallback = !process.env.PORT;
+  let httpServer;
+  let shuttingDown = false;
+
+  const shutdown = (signal, callback) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`
+[shutdown] Received ${signal}. Closing server...`);
+
+    if (httpServer && httpServer.listening) {
+      httpServer.close((err) => {
+        if (err) {
+          console.error("[shutdown] Error closing HTTP server:", err);
+        } else {
+          console.log("[shutdown] HTTP server closed.");
+        }
+        if (typeof callback === "function") {
+          callback();
+        } else {
+          process.exit(err ? 1 : 0);
+        }
+      });
+    } else {
+      if (typeof callback === "function") {
+        callback();
+      } else {
+        process.exit(0);
+      }
+    }
+  };
+
+  process.once("SIGINT", () => shutdown("SIGINT"));
+  process.once("SIGTERM", () => shutdown("SIGTERM"));
+  process.once("SIGUSR2", () => shutdown("SIGUSR2", () => process.kill(process.pid, "SIGUSR2")));
+
+  const startServerOnPort = (port, attemptsLeft = 6) => {
+    if (attemptsLeft <= 0) {
+      console.error("[server] Exhausted port retries. Aborting.");
+      process.exit(1);
+    }
+
+    httpServer = http.createServer(app);
+    const io = initializeSocket(httpServer);
+    setIOInstance(io);
+
+    httpServer.once("error", (err) => {
+      if (err.code === "EADDRINUSE") {
+        if (!allowPortFallback) {
+          console.error(`\n[server] Port ${port} is already in use and PORT was explicitly configured. Aborting.`);
+          process.exit(1);
+        }
+
+        console.warn(`\n[server] Port ${port} in use. Trying port ${port + 1} (retries left: ${attemptsLeft - 1})`);
+        // Small delay before retrying
+        setTimeout(() => startServerOnPort(port + 1, attemptsLeft - 1), 200);
+        return;
+      }
+      console.error("[server] Unexpected server error:", err);
+      process.exit(1);
+    });
+
+    httpServer.listen(port, () => {
+      console.log(`Server listening on port ${port}`);
+    });
+  };
+
+  startServerOnPort(requestedPort);
 }

@@ -21,11 +21,10 @@ const sessionSchema = new mongoose.Schema(
             required:true,
             ref:"User",
         },
-        participant:{
+        participants:[{
             type:mongoose.Schema.Types.ObjectId,
-            default:null,
             ref:"User",
-        },
+        }],
         status:{
          type:String,
          enum:["active", "completed"],
@@ -47,12 +46,29 @@ const sessionSchema = new mongoose.Schema(
             max:5
         },
         invitedUsers:[{
+            user: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User",
+                default: null
+            },
+            name: {
+                type: String,
+                default: ""
+            },
             email:String,
             status:{
                 type:String,
                 enum:["pending", "accepted", "rejected"],
                 default:"pending"
-            }
+            },
+            invitedAt: {
+                type: Date,
+                default: Date.now
+            },
+            respondedAt: {
+                type: Date,
+                default: null
+            },
         }],
         languageCodeMap: {
             type: Map,

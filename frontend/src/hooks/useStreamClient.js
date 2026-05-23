@@ -4,8 +4,9 @@ import { useUser } from "@clerk/clerk-react";
 import toast from "react-hot-toast";
 import { initializeStreamClient, disconnectStreamClient } from "../lib/stream.js";
 import { sessionApi } from "../api/sessions.js";
+import { waitForClerkToken } from "./useClerkAuthSync.js";
 
-function useStreamClient(session, loadingSession, isHost, isParticipant) {
+function useStreamClient(session, loadingSession, isHost, isParticipant, authTokenReady) {
   const { user } = useUser();
 
   const [streamClient, setStreamClient] = useState(null);
@@ -13,6 +14,9 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
   const [chatClient, setChatClient] = useState(null);
   const [channel, setChannel] = useState(null);
   const [isInitializingCall, setIsInitializingCall] = useState(true);
+  const [videoBlockedReason, setVideoBlockedReason] = useState(null);
+
+  const canInitVideo = isHost || isParticipant;
 
   useEffect(() => {
     let isCancelled = false;
@@ -23,23 +27,41 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
     let callJoined = false;
 
     const initCall = async () => {
-      if (
-        !session?.callId ||
-        (!isHost && !isParticipant) ||
-        session.status === "completed"
-      ) {
+      setVideoBlockedReason(null);
+
+      if (!session?.callId || session.status === "completed") {
         setIsInitializingCall(false);
         return;
       }
 
+      if (!authTokenReady) {
+        setIsInitializingCall(true);
+        return;
+      }
+
+      if (!canInitVideo) {
+        setVideoBlockedReason("join_required");
+        setIsInitializingCall(false);
+        return;
+      }
+
+      setIsInitializingCall(true);
+
       try {
-        const { token, userId, userName, userImage } =
+        const token = await waitForClerkToken();
+        if (!token) {
+          setVideoBlockedReason("auth");
+          return;
+        }
+
+        const { token: streamToken, userId, userName, userImage } =
           await sessionApi.getStreamToken();
 
-        // ---------------- VIDEO CLIENT ----------------
+        if (isCancelled) return;
+
         videoClient = await initializeStreamClient(
           { id: userId, name: userName, image: userImage },
-          token
+          streamToken
         );
 
         if (isCancelled) return;
@@ -53,16 +75,13 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
         if (isCancelled) return;
         setCall(videoCall);
 
-        // ---------------- CHAT CLIENT ----------------
         const apiKey = import.meta.env.VITE_STREAM_API_KEY;
-
         if (!apiKey) {
           throw new Error("VITE_STREAM_API_KEY is missing");
         }
 
         chatClientInstance = StreamChat.getInstance(apiKey);
 
-        // IMPORTANT: always ensure clean connection state
         if (
           chatClientInstance.userID &&
           chatClientInstance.userID !== userId
@@ -70,17 +89,15 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
           await chatClientInstance.disconnectUser();
         }
 
-        // MUST connect BEFORE channel
         await chatClientInstance.connectUser(
           { id: userId, name: userName, image: userImage },
-          token
+          streamToken
         );
 
         if (isCancelled) return;
 
         setChatClient(chatClientInstance);
 
-        // NOW safe to create channel
         const chatChannel = chatClientInstance.channel(
           "messaging",
           session.callId
@@ -90,8 +107,15 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
 
         if (isCancelled) return;
         setChannel(chatChannel);
+        setVideoBlockedReason(null);
       } catch (error) {
-        toast.error("Failed to join video call");
+        const status = error?.response?.status;
+        if (status === 401) {
+          setVideoBlockedReason("auth");
+        } else {
+          setVideoBlockedReason("error");
+          toast.error("Failed to join video call");
+        }
       } finally {
         if (!isCancelled) {
           setIsInitializingCall(false);
@@ -101,6 +125,8 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
 
     if (session && !loadingSession) {
       initCall();
+    } else if (!loadingSession) {
+      setIsInitializingCall(false);
     }
 
     return () => {
@@ -111,7 +137,7 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
           if (videoCall && callJoined) {
             await videoCall.leave();
           }
-        } catch (err) {
+        } catch {
           // Ignored
         }
 
@@ -119,13 +145,17 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
           if (chatClientInstance?.userID) {
             await chatClientInstance.disconnectUser();
           }
-        } catch {}
+        } catch {
+          // Ignored
+        }
 
         try {
           if (videoClient) {
             await disconnectStreamClient(videoClient);
           }
-        } catch {}
+        } catch {
+          // Ignored
+        }
       };
 
       cleanup();
@@ -135,8 +165,18 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
       setChannel(null);
       setStreamClient(null);
       setIsInitializingCall(true);
+      setVideoBlockedReason(null);
     };
-  }, [session?.callId, session?.status, loadingSession, isHost, isParticipant, user?.id]);
+  }, [
+    session?.callId,
+    session?.status,
+    loadingSession,
+    isHost,
+    isParticipant,
+    canInitVideo,
+    authTokenReady,
+    user?.id,
+  ]);
 
   return {
     streamClient,
@@ -144,6 +184,8 @@ function useStreamClient(session, loadingSession, isHost, isParticipant) {
     chatClient,
     channel,
     isInitializingCall,
+    videoBlockedReason,
+    canInitVideo,
   };
 }
 
