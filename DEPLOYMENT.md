@@ -11,8 +11,13 @@ git push origin main
 ## 2. Vercel — Redeploy
 
 1. Open [Vercel Dashboard](https://vercel.com) → your **CodeArena** project.
-2. **Settings → Environment Variables** — set every variable from `.env.example` (Production + Preview).
-3. **Deployments** → latest deployment → **Redeploy** (enable “Use existing Build Cache” off if issues persist).
+2. **Settings → General → Build & Development**
+   - Framework Preset: **Other**
+   - Root Directory: **.** (repo root)
+   - Build Command: leave empty (uses `vercel.json` → `npm run build`)
+   - Output Directory: leave empty (uses `vercel.json` → `frontend/dist`)
+3. **Settings → Environment Variables** — set every variable from `.env.example` (Production + Preview).
+4. **Deployments** → **Redeploy** (turn off build cache if the old `builds` config was cached).
 
 ### Required environment variables (Production)
 
