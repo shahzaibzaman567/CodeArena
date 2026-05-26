@@ -13,8 +13,6 @@ import CodeEditorPanel from "../components/CodeEditor.jsx";
 import { executeCode } from "../lib/codeExecution.js";
 import { useProblemById, useProblems } from "../hooks/useProblems";
 import { useSaveProgress, useSavedProgress } from "../hooks/useSubmissions";
-import { aiApi } from "../api/ai.js";
-import { LANGUAGE_CONFIG } from "../data/problems.js";
 
 import { 
   Loader2Icon,
@@ -34,7 +32,6 @@ function ProblemPage() {
   const [codeByLanguage, setCodeByLanguage] = useState({});
   const [output, setOutput] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [isTranslating, setIsTranslating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editorMarkers, setEditorMarkers] = useState([]);
 
@@ -46,7 +43,7 @@ function ProblemPage() {
     return problemDataResult?.problem;
   }, [id, problemDataResult]);
 
-  const code = codeByLanguage[selectedLanguage] || currentProblem?.starterCode?.[selectedLanguage] || "";
+  const code = codeByLanguage[selectedLanguage] ?? "";
 
   // Sync code with AI widget
   const syncCodeWithAI = useCallback((newCode, lang, problem) => {
@@ -62,22 +59,10 @@ function ProblemPage() {
   // Split into two effects for better control
   useEffect(() => {
     if (currentProblem) {
-      const initialMap = {};
-      const languages = ["javascript", "python", "java", "cpp", "csharp"];
-      let firstLangWithCode = null;
-      
-      languages.forEach(lang => {
-        const langCode = currentProblem.starterCode?.[lang] || "";
-        initialMap[lang] = langCode;
-        if (langCode && !firstLangWithCode) {
-          firstLangWithCode = lang;
-        }
-      });
-
-      setCodeByLanguage(initialMap);
-      if (firstLangWithCode) {
-        setSelectedLanguage(firstLangWithCode);
-      }
+      const defaultLang = "javascript";
+      const starter = currentProblem.starterCode?.[defaultLang] ?? "";
+      setCodeByLanguage(starter ? { [defaultLang]: starter } : {});
+      setSelectedLanguage(defaultLang);
       setOutput(null);
     }
   }, [currentProblem]);
@@ -108,57 +93,16 @@ function ProblemPage() {
     return () => window.removeEventListener("arena-markers-update", handleMarkersUpdate);
   }, []);
 
-  const handleLanguageChange = async (e) => {
+  const handleLanguageChange = (e) => {
     const newLang = e.target.value;
-    const oldLang = selectedLanguage;
-    const sourceCode = codeByLanguage[oldLang] || "";
-    const targetExistingCode = codeByLanguage[newLang] || "";
-    const starterForTarget = currentProblem?.starterCode?.[newLang] || "";
-    const starterForSource = currentProblem?.starterCode?.[oldLang] || "";
+    if (newLang === selectedLanguage) return;
 
+    setCodeByLanguage(prev => ({
+      ...prev,
+      [selectedLanguage]: code,
+    }));
     setSelectedLanguage(newLang);
     setOutput(null);
-    
-    // 🛡️ Senior Dev Logic: Auto-translate if there's meaningful code
-    const hasMeaningfulSource = sourceCode.trim().length > 0 && sourceCode.trim() !== starterForSource.trim();
-    const targetIsEmptyOrStarter = !targetExistingCode.trim() || targetExistingCode.trim() === starterForTarget.trim();
-
-    if (hasMeaningfulSource && targetIsEmptyOrStarter && oldLang !== newLang) {
-      setIsTranslating(true);
-      try {
-        const { translatedCode } = await aiApi.translateCode(
-          sourceCode,
-          oldLang,
-          newLang,
-          currentProblem?.title || ""
-        );
-        setCodeByLanguage(prev => ({
-          ...prev,
-          [newLang]: translatedCode
-        }));
-        toast.success(`Translated from ${LANGUAGE_CONFIG[oldLang].name} to ${LANGUAGE_CONFIG[newLang].name}`);
-      } catch (err) {
-        const errorMsg = err.response?.data?.message || err.message || "Unknown error";
-        toast.error(`Translation failed: ${errorMsg}`);
-        // Fallback to starter code
-        setCodeByLanguage(prev => {
-          if (!prev[newLang] && starterForTarget) {
-            return { ...prev, [newLang]: starterForTarget };
-          }
-          return prev;
-        });
-      } finally {
-        setIsTranslating(false);
-      }
-    } else {
-      // Ensure code exists for this language, fallback to starter code
-      setCodeByLanguage(prev => {
-        if (!prev[newLang] && starterForTarget) {
-          return { ...prev, [newLang]: starterForTarget };
-        }
-        return prev;
-      });
-    }
   };
 
   const handleCodeChange = (value) => {
@@ -282,10 +226,10 @@ function ProblemPage() {
               {/* Top panel - Code editor */}
               <Panel defaultSize={70} minSize={30}>
                 <CodeEditorPanel
+                  key={selectedLanguage}
                   selectedLanguage={selectedLanguage}
                   code={code}
                   isRunning={isRunning}
-                  isTranslating={isTranslating}
                   isSaving={isSaving}
                   onLanguageChange={handleLanguageChange}
                   onCodeChange={handleCodeChange}
