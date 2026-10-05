@@ -23,6 +23,7 @@ export let ENV = {
     // Feature 2: AI Code Helper
     CLAUDE_API_KEY: normalizeEnv(process.env.CLAUDE_API_KEY),
     GEMINI_API_KEY: normalizeEnv(process.env.GEMINI_API_KEY),
+    GROQ_API_KEY: normalizeEnv(process.env.GROQ_API_KEY),
     EMAIL_USER: normalizeEnv(process.env.EMAIL_USER),
     EMAIL_PASS: normalizeEnv(process.env.EMAIL_PASS),
     CLERK_SECRET_KEY: normalizeEnv(process.env.CLERK_SECRET_KEY),

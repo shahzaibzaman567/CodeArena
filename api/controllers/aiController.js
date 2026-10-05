@@ -19,10 +19,10 @@ export async function getCodeSuggestions(req, res) {
     
     // Models ordered by preference — using stable aliases to maximize quota availability
     const modelsToTry = [
-      "gemini-2.0-flash",
+      "gemini-3.5-flash",
       "gemini-flash-latest",
       "gemini-pro-latest",
-      "gemini-2.0-flash-lite"
+      "gemini-3.5-flash-lite"
     ];
     
     let lastError = null;
@@ -59,6 +59,33 @@ User Question/Hint Request: ${hint || "Analyze my code"}`;
       }
     }
 
+    if (!responseText && ENV.GROQ_API_KEY) {
+      try {
+        const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${ENV.GROQ_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: "llama-3.1-70b-versatile",
+            messages: [
+              { role: "system", content: systemInstruction },
+              { role: "user", content: userPrompt }
+            ]
+          })
+        });
+        if (groqResponse.ok) {
+          const data = await groqResponse.json();
+          responseText = data.choices[0].message.content;
+        } else {
+          lastError = new Error(`Groq Error: ${groqResponse.status} ${await groqResponse.text()}`);
+        }
+      } catch (err) {
+        lastError = err;
+      }
+    }
+
     if (!responseText) {
       return res.status(500).json({ 
         message: "AI Error: Failed to generate response with any available model. " + (lastError ? lastError.message : ""),
@@ -90,7 +117,7 @@ export async function getCodeReview(req, res) {
     if (!apiKey) return res.status(500).json({ message: "AI service not configured" });
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const modelsToTry = ["gemini-2.0-flash", "gemini-flash-latest", "gemini-pro-latest"];
+    const modelsToTry = ["gemini-3.5-flash", "gemini-flash-latest", "gemini-pro-latest"];
     let responseText = "";
     for (const modelName of modelsToTry) {
       try {
@@ -102,6 +129,31 @@ export async function getCodeReview(req, res) {
         const msg = err.message || "";
         const isRetryable = msg.includes('503') || msg.includes('404') || msg.includes('429') || msg.includes('not found') || msg.includes('quota');
         if (!isRetryable) throw err;
+      }
+    }
+
+    if (!responseText && ENV.GROQ_API_KEY) {
+      try {
+        const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${ENV.GROQ_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: "llama-3.1-70b-versatile",
+            messages: [
+              { role: "system", content: "You are a senior code reviewer." },
+              { role: "user", content: `Review this ${language} code and return JSON {quality, performance, bestPractices, risks}: \n${code}` }
+            ]
+          })
+        });
+        if (groqResponse.ok) {
+          const data = await groqResponse.json();
+          responseText = data.choices[0].message.content;
+        }
+      } catch (err) {
+        console.error("Groq fallback failed", err);
       }
     }
     if (!responseText) return res.status(500).json({ message: "AI service temporarily unavailable. Please try again." });
@@ -122,7 +174,7 @@ export async function translateCode(req, res) {
     const genAI = new GoogleGenerativeAI(apiKey);
     
     // Use rotation for translation too
-    const modelsToTry = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-2.5-flash", "gemini-pro-latest"];
+    const modelsToTry = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-flash-latest", "gemini-pro-latest"];
     let translatedCode = "";
     let lastError = null;
 
@@ -152,6 +204,44 @@ export async function translateCode(req, res) {
             const isRetryable = msg.includes('503') || msg.includes('404') || msg.includes('429') || msg.includes('not found') || msg.includes('quota');
             if (!isRetryable) break;
         }
+    }
+
+    if (!translatedCode && ENV.GROQ_API_KEY) {
+      try {
+        const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${ENV.GROQ_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: "llama-3.1-70b-versatile",
+            messages: [
+              { role: "user", content: `Translate the following ${sourceLanguage} source code to ${targetLanguage}.
+            
+            Problem Description: ${problemDescription || "General coding problem"}
+            
+            IMPORTANT:
+            1. If the target language is a compiled language like C#, Java, or C++, you MUST provide a complete, RUNNABLE program with all necessary boilerplate.
+            2. For Java, use "Solution" as the class name with a public static void main(String[] args) entry point.
+            3. For C#, use "Solution" as the class name (NOT "Main") and "Main" as the static entry method inside it. Example: class Solution { static void Main(string[] args) { ... } }
+            4. For C++, wrap code in a standard main() function.
+            5. ONLY output the raw source code. No markdown formatting, no explanations, no code fences.
+            
+            Source Code to Translate:
+            ${code}` }
+            ]
+          })
+        });
+        if (groqResponse.ok) {
+          const data = await groqResponse.json();
+          translatedCode = data.choices[0].message.content;
+        } else {
+          lastError = new Error(`Groq Error: ${groqResponse.status} ${await groqResponse.text()}`);
+        }
+      } catch (err) {
+        lastError = err;
+      }
     }
 
     if (!translatedCode) throw lastError || new Error("Translation failed");

@@ -44,6 +44,11 @@ app.use(cors({
       return callback(null, true);
     }
 
+    // Allow all local dev servers dynamically
+    if (normalized.startsWith("http://localhost:") || normalized.startsWith("http://127.0.0.1:")) {
+      return callback(null, true);
+    }
+
     // 3. 🛡️ Senior Dev: Allow Vercel preview/deployment URLs dynamically
     if (normalized.endsWith(".vercel.app")) {
       return callback(null, true);
